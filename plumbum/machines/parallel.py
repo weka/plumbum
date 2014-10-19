@@ -12,7 +12,7 @@ class EmptyCluster(Exception):
 
 def make_concurrent(self, rhs):
     if not isinstance(rhs, BaseCommand):
-        raise TypeError("rhs must be an instance of BaseCommand")
+        return NotImplemented
     if isinstance(self, ConcurrentCommand):
         if isinstance(rhs, ConcurrentCommand):
             self.commands.extend(rhs.commands)
