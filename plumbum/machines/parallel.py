@@ -94,7 +94,7 @@ class Cluster(object):
     def __iter__(self):
         return iter(self.machines)
     def filter(self, pred):
-        return self.__class__(filter(pred, self))
+        return self.__class__(*filter(pred, self))
     def which(self, progname):
         return [mach.which(progname) for mach in self]
     def list_processes(self):
