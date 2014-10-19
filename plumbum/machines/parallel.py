@@ -4,6 +4,12 @@ from plumbum.commands.base import BaseCommand
 from plumbum.commands.processes import run_proc, CommandNotFound, ProcessExecutionError
 
 
+class EmptyCluster(Exception):
+    """Raised by :class:`Cluster <plumbum.machines.parallel.Cluster>` when actions are attempted on a cluster
+    that has no machines"""
+    pass
+
+
 def make_concurrent(self, rhs):
     if not isinstance(rhs, BaseCommand):
         raise TypeError("rhs must be an instance of BaseCommand")
@@ -58,6 +64,7 @@ class ConcurrentPopen(object):
 
 class ConcurrentCommand(BaseCommand):
     def __init__(self, *commands):
+        assert commands, EmptyConcurrentCommand()
         self.commands = list(commands)
     def formulate(self, level=0, args=()):
         form = ["("]
@@ -91,6 +98,10 @@ class Cluster(object):
 
     def add_machine(self, machine):
         self.machines.append(machine)
+    def __len__(self):
+        return len(self.machines)
+    def empty(self):
+        return not self
     def __iter__(self):
         return iter(self.machines)
     def filter(self, pred):
@@ -106,6 +117,8 @@ class Cluster(object):
     def __getitem__(self, progname):
         if not isinstance(progname, str):
             raise TypeError("progname must be a string, not %r" % (type(progname,)))
+        if not self.machines:
+            raise EmptyCluster("Cluster is empty")
         return ConcurrentCommand(*(mach[progname] for mach in self))
     def __contains__(self, cmd):
         try:
@@ -117,9 +130,13 @@ class Cluster(object):
 
     @property
     def python(self):
+        if not self.machines:
+            raise EmptyCluster()
         return ConcurrentCommand(*(mach.python for mach in self))
 
     def session(self):
+        if not self.machines:
+            raise EmptyCluster()
         return ClusterSession(*(mach.session() for mach in self))
 
     @contextmanager
