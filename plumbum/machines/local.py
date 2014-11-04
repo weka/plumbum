@@ -82,11 +82,10 @@ class LocalEnv(BaseEnv):
 # Local Commands
 #===================================================================================================
 class LocalCommand(ConcreteCommand):
-    __slots__ = ["local"]
+    __slots__ = []
     QUOTE_LEVEL = 2
 
-    def __init__(self, local, executable, encoding = "auto"):
-        self.local = local
+    def __init__(self, executable, encoding = "auto"):
         ConcreteCommand.__init__(self, executable,
             local.encoding if encoding == "auto" else encoding)
     def __repr__(self):
@@ -94,12 +93,12 @@ class LocalCommand(ConcreteCommand):
 
     @property
     def machine(self):
-        return self.local
+        return local
 
     def popen(self, args = (), cwd = None, env = None, **kwargs):
         if isinstance(args, six.string_types):
             args = (args,)
-        return self.local._popen(self.executable, self.formulate(0, args),
+        return local._popen(self.executable, self.formulate(0, args),
             cwd = self.cwd if cwd is None else cwd, env = self.env if env is None else env,
             **kwargs)
 
@@ -188,14 +187,14 @@ class LocalMachine(object):
             ls = local["ls"]
         """
         if isinstance(cmd, LocalPath):
-            return LocalCommand(self, cmd)
+            return LocalCommand(cmd)
         elif not isinstance(cmd, RemotePath):
             if "/" in cmd or "\\" in cmd:
                 # assume path
-                return LocalCommand(self, self.path(cmd))
+                return LocalCommand(local.path(cmd))
             else:
                 # search for command
-                return LocalCommand(self, self.which(cmd))
+                return LocalCommand(self.which(cmd))
         else:
             raise TypeError("cmd must not be a RemotePath: %r" % (cmd,))
 
@@ -373,10 +372,8 @@ class LocalMachine(object):
         """A shorthand for :func:`as_user("root") <plumbum.machines.local.LocalMachine.as_user>`"""
         return self.as_user()
 
-    @property
-    def python(self):
-        """A command that represents the current python interpreter (``sys.executable``)"""
-        return LocalCommand(self, sys.executable, self.encoding)
+    python = LocalCommand(sys.executable, encoding)
+    """A command that represents the current python interpreter (``sys.executable``)"""
 
 local = LocalMachine()
 """The *local machine* (a singleton object). It serves as an entry point to everything
