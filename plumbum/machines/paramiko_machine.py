@@ -226,10 +226,7 @@ class ParamikoMachine(BaseRemoteMachine):
         if envdelta:
             argv.append("env")
             argv.extend("%s=%s" % (k, v) for k, v in envdelta.items())
-        args = args.formulate()
-        if self._as_user_stack:
-            args, executable = self._as_user_stack[-1](args)
-        argv.extend(args)
+        argv.extend(args.formulate())
         cmdline = " ".join(argv)
         logger.debug(cmdline)
         si, so, se = streams = self._client.exec_command(cmdline, 1)
@@ -339,39 +336,36 @@ class SocketCompatibleChannel(object):
 ###################################################################################################
 # Custom iter_lines for paramiko.Channel
 ###################################################################################################
-try:
-    from selectors import DefaultSelector, EVENT_READ
-except ImportError:
-    # Pre Python 3.4 implementation
-    def _iter_lines(proc, decode, linesize):
+def _iter_lines(proc, decode, linesize):
+
+    try:
+        from selectors import DefaultSelector, EVENT_READ
+    except ImportError:
+        # Pre Python 3.4 implementation
         from select import select
-        while True:
-            rlist, _, _ = select([proc.stdout.channel], [], [])
-            for stream in rlist:
-                if proc.stdout.recv_ready():
-                    yield 0, decode(six.b(proc.stdout.readline(linesize)))
-                if proc.stdout.recv_stderr_ready():
-                    yield 1, decode(six.b(proc.stderr.readline(linesize)))
-            if proc.poll() is not None:
-                break
-        for line in proc.stdout:
-            yield 0, decode(six.b(line))
-        for line in proc.stderr:
-            yield 1, decode(six.b(line))
-else:
-    # Python 3.4 implementation
-    def _iter_lines(proc, decode, linesize):
-        sel = DefaultSelector()
-        sel.register(proc.stdout.channel, EVENT_READ)
-        while True:
-            for key, mask in sel.select():
-                if proc.stdout.channel.recv_ready():
-                    yield 0, decode(six.b(proc.stdout.readline(linesize)))
-                if proc.stdout.channel.recv_stderr_ready():
-                    yield 1, decode(six.b(proc.stderr.readline(linesize)))
-            if proc.poll() is not None:
-                break
-        for line in proc.stdout:
-            yield 0, decode(six.b(line))
-        for line in proc.stderr:
-            yield 1, decode(six.b(line))
+        def selector():
+            while True:
+                rlist, _, _ = select([proc.stdout.channel], [], [])
+                for _ in rlist:
+                    yield
+    else:
+        # Python 3.4 implementation
+        def selector():
+            sel = DefaultSelector()
+            sel.register(proc.stdout.channel, EVENT_READ)
+            while True:
+                for key, mask in sel.select():
+                    yield
+
+    for _ in selector():
+        if proc.stdout.channel.recv_ready():
+            yield 0, decode(six.b(proc.stdout.readline(linesize)))
+        if proc.stdout.channel.recv_stderr_ready():
+            yield 1, decode(six.b(proc.stderr.readline(linesize)))
+        if proc.poll() is not None:
+            break
+
+    for line in proc.stdout:
+        yield 0, decode(six.b(line))
+    for line in proc.stderr:
+        yield 1, decode(six.b(line))

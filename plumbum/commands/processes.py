@@ -71,38 +71,35 @@ def _check_process(proc, retcode, timeout, stdout, stderr):
                 stdout, stderr)
     return proc.returncode, stdout, stderr
 
-try:
-    from selectors import DefaultSelector, EVENT_READ
-except ImportError:
-    # Pre Python 3.4 implementation
-    def _iter_lines(proc, decode, linesize):
+def _iter_lines(proc, decode, linesize):
+    try:
+        from selectors import DefaultSelector, EVENT_READ
+    except ImportError:
+        # Pre Python 3.4 implementation
         from select import select
-        while True:
-            rlist, _, _ = select([proc.stdout, proc.stderr], [], [])
-            for stream in rlist:
-                yield (stream is proc.stderr), decode(stream.readline(linesize))
-            if proc.poll() is not None:
-                break
-        for line in proc.stdout:
-            yield 0, decode(line)
-        for line in proc.stderr:
-            yield 1, decode(line)
+        def selector():
+            while True:
+                rlist, _, _ = select([proc.stdout, proc.stderr], [], [])
+                for stream in rlist:
+                    yield (stream is proc.stderr), decode(stream.readline(linesize))
+    else:
+        # Python 3.4 implementation
+        def selector():
+            sel = DefaultSelector()
+            sel.register(proc.stdout, EVENT_READ, 0)
+            sel.register(proc.stderr, EVENT_READ, 1)
+            while True:
+                for key, mask in sel.select():
+                    yield key.data, decode(key.fileobj.readline(linesize))
 
-else:
-    # Python 3.4 implementation
-    def _iter_lines(proc, decode, linesize):
-        sel = DefaultSelector()
-        sel.register(proc.stdout, EVENT_READ, 0)
-        sel.register(proc.stderr, EVENT_READ, 1)
-        while True:
-            for key, mask in sel.select():
-                yield key.data, decode(key.fileobj.readline(linesize))
-            if proc.poll() is not None:
-                break
-        for line in proc.stdout:
-            yield 0, decode(line)
-        for line in proc.stderr:
-            yield 1, decode(line)
+    for ret in selector():
+        yield ret
+        if proc.poll() is not None:
+            break
+    for line in proc.stdout:
+        yield 0, decode(line)
+    for line in proc.stderr:
+        yield 1, decode(line)
 
 
 #===================================================================================================

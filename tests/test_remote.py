@@ -139,13 +139,15 @@ s.close()
 
     def test_iter_lines_timeout(self):
         with self._connect() as rem:
-
             try:
                 for i, (out, err) in enumerate(rem["ping"]["127.0.0.1", "-i", 0.5].popen().iter_lines(timeout=2)):
                     print("out:", out)
                     print("err:", err)
             except NotImplementedError:
-                self.skipTest(sys.exc_info()[1])
+                try:
+                    self.skipTest(sys.exc_info()[1])
+                except AttributeError:
+                    return
             except ProcessTimedOut:
                 self.assertTrue(i > 3)
             else:
