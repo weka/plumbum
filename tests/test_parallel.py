@@ -67,6 +67,9 @@ class TestParallelSsh(unittest.TestCase):
         with m.as_root():
             assert(get_user_from_env() == "root")
 
+    def test_cmd(self):
+        m = Cluster(self.connect(), local, self.connect())
+        assert(len(m.cmd.ls("/tmp")) == len(m))
 
 try:
     import paramiko

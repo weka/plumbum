@@ -1,5 +1,6 @@
 from contextlib import contextmanager
 
+from plumbum.machines.local import CommandsProvider
 from plumbum.commands.base import BaseCommand
 from plumbum.commands.processes import run_proc, CommandNotFound, ProcessExecutionError
 
@@ -87,7 +88,7 @@ class ConcurrentCommand(BaseCommand):
             return ConcurrentCommand(*(cmd[args] for cmd in self.commands))
 
 
-class Cluster(object):
+class Cluster(CommandsProvider):
     def __init__(self, *machines):
         self.machines = list(machines)
     def __enter__(self):
