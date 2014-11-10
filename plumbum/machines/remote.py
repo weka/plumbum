@@ -2,7 +2,7 @@ import re
 from contextlib import contextmanager
 from plumbum.commands import CommandNotFound, shquote, ConcreteCommand
 from plumbum.lib import _setdoc, ProcInfo, six
-from plumbum.machines.local import LocalPath
+from plumbum.machines.local import LocalPath, CommandsProvider
 from tempfile import NamedTemporaryFile
 from plumbum.machines.base import BaseMachine
 from plumbum.machines.env import BaseEnv
@@ -131,7 +131,7 @@ class ClosedRemote(object):
         raise ClosedRemoteMachine("%r has been closed" % (self._obj,))
 
 
-class BaseRemoteMachine(BaseMachine):
+class BaseRemoteMachine(CommandsProvider):
     """Represents a *remote machine*; serves as an entry point to everything related to that
     remote machine, such as working directory and environment manipulation, command creation,
     etc.

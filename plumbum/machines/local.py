@@ -87,6 +87,26 @@ class LocalEnv(BaseEnv):
         return output
 
 #===================================================================================================
+# Commands Provider
+#===================================================================================================
+class CommandsProvider(object):
+
+    class Cmd(object):
+
+        def __init__(self, machine):
+            self._machine = machine
+        def __getattr__(self, name):
+            try:
+                return self._machine[name]
+            except CommandNotFound:
+                raise AttributeError(name)
+
+    @property
+    def cmd(self):
+        return self.Cmd(self)
+
+
+#===================================================================================================
 # Local Commands
 #===================================================================================================
 class LocalCommand(ConcreteCommand):
@@ -113,7 +133,7 @@ class LocalCommand(ConcreteCommand):
 #===================================================================================================
 
 
-class LocalMachine(BaseMachine):
+class LocalMachine(CommandsProvider):
     """The *local machine* (a singleton object). It serves as an entry point to everything
     related to the local machine, such as working directory and environment manipulation,
     command creation, etc.
