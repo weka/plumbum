@@ -118,6 +118,8 @@ class Cluster(object):
     def path(self, *parts):
         return [mach.path(*parts) for mach in self]
     def __getitem__(self, progname):
+        if isinstance(progname, int):
+            return self.machines[progname]
         if not isinstance(progname, str):
             raise TypeError("progname must be a string, not %r" % (type(progname,)))
         if not self.machines:
