@@ -88,6 +88,10 @@ s.close()
                 self.assertTrue("test_remote.py" in cmd())
                 self.assertTrue("test_remote.py" in [f.basename for f in rem.cwd // "*.py"])
 
+    def test_cmd(self):
+        with self._connect() as rem:
+            rem.cmd.ls("/tmp")
+
     def test_download_upload(self):
         with self._connect() as rem:
             rem.upload("test_remote.py", "/tmp")
