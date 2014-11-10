@@ -96,6 +96,9 @@ class ParamikoPopen(object):
         stderr = six.b("").join(six.b(s) for s in stderr)
         return stdout, stderr
 
+    def _decode(self, bytes):
+        return bytes.decode(self.encoding, "ignore")
+
     def iter_lines(self, timeout=None, **kwargs):
         if timeout is not None:
             raise NotImplementedError("The 'timeout' parameter is not supported with ParamikoMachine")

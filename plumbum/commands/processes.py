@@ -247,9 +247,9 @@ def run_proc(proc, retcode, timeout = None):
         stdout = six.b("")
     if not stderr:
         stderr = six.b("")
-    if getattr(proc, "encoding", None):
-        stdout = stdout.decode(proc.encoding, "ignore")
-        stderr = stderr.decode(proc.encoding, "ignore")
+    if hasattr(proc, "_decode"):
+        stdout = proc._decode(stdout)
+        stderr = proc._decode(stderr)
 
     return _check_process(proc, retcode, timeout, stdout, stderr)
 
@@ -277,9 +277,8 @@ def iter_lines(proc, retcode = 0, timeout = None, linesize = -1, _iter_lines = _
     :returns: An iterator of (out, err) line tuples.
     """
 
-    encoding = getattr(proc, "encoding", None)
-    if encoding:
-        decode = lambda s: s.decode(encoding).rstrip()
+    if hasattr(proc, "_decode"):
+        decode = lambda s: proc._decode(s).rstrip()
     else:
         decode = lambda s: s
 

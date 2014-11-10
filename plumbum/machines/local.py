@@ -264,7 +264,7 @@ class LocalMachine(object):
         proc = IterablePopen(argv, executable = str(executable), stdin = stdin, stdout = stdout,
             stderr = stderr, cwd = str(cwd), env = env, **kwargs)  # bufsize = 4096
         proc._start_time = time.time()
-        proc.encoding = self.encoding
+        proc._decode = lambda bytes, encoding=self.encoding: bytes.decode(encoding)
         proc.argv = argv
         return proc
 

@@ -105,7 +105,8 @@ class SessionPopen(object):
         stdout = six.b("").join(stdout)
         stderr = six.b("").join(stderr)
         return stdout, stderr
-
+    def _decode(self, bytes):
+        return bytes.decode(self.encoding)
 
 class ShellSession(object):
     """An abstraction layer over *shell sessions*. A shell session is the execution of an

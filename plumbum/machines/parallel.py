@@ -61,6 +61,9 @@ class ConcurrentPopen(object):
         out_err_tuples = [proc.communicate() for proc in self.procs]
         self.wait()
         return tuple(zip(*out_err_tuples))
+    def _decode(self, bytes):
+        return [proc._decode(b) for (proc, b) in zip(self.procs, bytes)]
+
 
 class ConcurrentCommand(BaseCommand):
     def __init__(self, *commands):
