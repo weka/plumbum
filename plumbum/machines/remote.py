@@ -182,7 +182,7 @@ class BaseRemoteMachine(CommandsProvider):
 
         :param progname: The program's name. Note that if underscores (``_``) are present
                          in the name, and the exact name is not found, they will be replaced
-                         in turn by hyphens (``-``) then periods (``.``), and the name will 
+                         in turn by hyphens (``-``) then periods (``.``), and the name will
                          be looked up again for each alternative
 
         :returns: A :class:`RemotePath <plumbum.path.local.RemotePath>`
@@ -275,7 +275,7 @@ class BaseRemoteMachine(CommandsProvider):
         for line in lines:
             parts = line.strip().split()
             yield ProcInfo(int(parts[0]), int(parts[1]), parts[2], " ".join(parts[3:]))
-    
+
     def pgrep(self, pattern):
         """
         Process grep: return information about all processes whose command-line args match the given regex pattern
@@ -283,7 +283,7 @@ class BaseRemoteMachine(CommandsProvider):
         pat = re.compile(pattern)
         for procinfo in self.list_processes():
             if pat.search(procinfo.args):
-                yield procinfo 
+                yield procinfo
 
     @contextmanager
     def tempdir(self):
@@ -389,4 +389,6 @@ class BaseRemoteMachine(CommandsProvider):
     def _path_link(self, src, dst, symlink):
         self._session.run("ln %s %s %s" % ("-s" if symlink else "", shquote(src), shquote(dst)))
 
+    def _path_truncate(self, fn, size):
+        self._session.run("truncate --size=%d %s" % (size, shquote(fn)))
 

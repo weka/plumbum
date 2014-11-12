@@ -78,8 +78,8 @@ class Path(object):
         """traverse all (recursive) sub-elements under this directory, that match the given filter.
         By default, the filter accepts everything; you can provide a custom filter function that
         takes a path as an argument and returns a boolean
-        
-        :param filter: the filter (predicate function) for matching results. Only paths matching 
+
+        :param filter: the filter (predicate function) for matching results. Only paths matching
                        this predicate are returned. Defaults to everything.
         :param dir_filter: the filter (predicate function) for matching directories. Only directories
                            matching this predicate are recursed into. Defaults to everything.
@@ -160,7 +160,7 @@ class Path(object):
         specify the encoding, e.g., ``'latin1'`` or ``'utf8'``"""
         raise NotImplementedError()
     def write(self, data, encoding=None):
-        """writes the given data to this file. By default the data is expected to be binary (``bytes``), 
+        """writes the given data to this file. By default the data is expected to be binary (``bytes``),
         but you can specify the encoding, e.g., ``'latin1'`` or ``'utf8'``"""
         raise NotImplementedError()
     def chown(self, owner = None, group = None, recursive = None):
@@ -179,18 +179,24 @@ class Path(object):
         :param mode: file mode as for os.chmod
         """
         raise NotImplementedError()
+    def truncate(self, size):
+        """Shrink or extend the size of path to the specified size.
+
+        :param size: file size in bytes
+        """
+        raise NotImplementedError()
 
     @staticmethod
     def _access_mode_to_flags(mode, flags = {"f" : os.F_OK, "w" : os.W_OK, "r" : os.R_OK, "x" : os.X_OK}):
         if isinstance(mode, str):
             mode = reduce(operator.or_, [flags[m] for m in mode.lower()], 0)
         return mode
-    
+
     def access(self, mode = 0):
         """Test file existence or permission bits
-        
-        :param mode: a bitwise-or of access bits, or a string-representation thereof: 
-                     ``'f'``, ``'x'``, ``'r'``, ``'w'`` for ``os.F_OK``, ``os.X_OK``, 
+
+        :param mode: a bitwise-or of access bits, or a string-representation thereof:
+                     ``'f'``, ``'x'``, ``'r'``, ``'w'`` for ``os.F_OK``, ``os.X_OK``,
                      ``os.R_OK``, ``os.W_OK``
         """
         raise NotImplementedError()
@@ -251,9 +257,9 @@ class RelativePath(object):
     """
     Relative paths are the "delta" required to get from one path to another.
     Note that relative path do not point at anything, and thus are not paths.
-    Therefore they are system agnostic (but closed under addition) 
+    Therefore they are system agnostic (but closed under addition)
     Paths are always absolute and point at "something", whether existent or not.
-    
+
     Relative paths are created by subtracting paths (``Path.relative_to``)
     """
     def __init__(self, parts):
@@ -286,10 +292,10 @@ class RelativePath(object):
     def __nonzero__(self):
         return bool(str(self))
     __bool__ = __nonzero__
-    
+
     def up(self, count = 1):
         return RelativePath(self.parts[:-count])
-    
+
     def __radd__(self, path):
         return path.join(*self.parts)
 

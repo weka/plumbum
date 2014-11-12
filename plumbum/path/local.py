@@ -239,6 +239,10 @@ class LocalPath(Path):
             if ex.errno != errno.ENOENT:
                 raise
 
+    @_setdoc(Path)
+    def truncate(self, size):
+        with self.open("r+b") as f:
+            os.ftruncate(f.fileno(), size)
 
 class LocalWorkdir(LocalPath):
     """Working directory manipulator"""
