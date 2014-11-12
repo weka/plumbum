@@ -412,3 +412,7 @@ class BaseRemoteMachine(CommandsProvider):
 
     def _path_link(self, src, dst, symlink):
         self._session.run("ln %s %s %s" % ("-s" if symlink else "", shquote(src), shquote(dst)))
+
+    def _path_truncate(self, fn, size):
+        self._session.run("truncate --size=%d %s" % (size, shquote(fn)))
+

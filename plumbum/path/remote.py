@@ -301,6 +301,10 @@ class RemotePath(Path):
     def drive(self):
         return ''
 
+    @_setdoc(Path)
+    def truncate(self, size=0):
+        self.remote._path_truncate(self, size)
+
 class RemoteWorkdir(RemotePath):
     """Remote working directory manipulator"""
 

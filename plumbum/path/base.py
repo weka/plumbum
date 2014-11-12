@@ -260,6 +260,13 @@ class Path(str, six.ABC):
         :param mode: file mode as for os.chmod
         """
 
+    @abstractmethod
+    def truncate(self, size):
+        """Shrink or extend the size of path to the specified size.
+
+        :param size: file size in bytes
+        """
+
     @staticmethod
     def _access_mode_to_flags(mode, flags = {"f" : os.F_OK, "w" : os.W_OK, "r" : os.R_OK, "x" : os.X_OK}):
         if isinstance(mode, str):
