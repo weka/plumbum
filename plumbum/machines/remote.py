@@ -3,7 +3,7 @@ import re
 from contextlib import contextmanager
 from plumbum.commands import CommandNotFound, shquote, ConcreteCommand
 from plumbum.lib import _setdoc, ProcInfo, six
-from plumbum.machines.local import LocalPath
+from plumbum.machines.local import LocalPath, CommandsProvider
 from tempfile import NamedTemporaryFile
 from plumbum.machines.env import BaseEnv
 from plumbum.path.remote import RemotePath, RemoteWorkdir, StatRes
@@ -110,7 +110,7 @@ class ClosedRemote(object):
         raise ClosedRemoteMachine("%r has been closed" % (self._obj,))
 
 
-class BaseRemoteMachine(object):
+class BaseRemoteMachine(CommandsProvider):
     """Represents a *remote machine*; serves as an entry point to everything related to that
     remote machine, such as working directory and environment manipulation, command creation,
     etc.
@@ -128,6 +128,7 @@ class BaseRemoteMachine(object):
 
 
     def __init__(self, encoding = "utf8", connect_timeout = 10, new_session = False):
+        self._as_user_stack = []
         self.encoding = encoding
         self.connect_timeout = connect_timeout
         self._session = self.session(new_session = new_session)
@@ -295,6 +296,30 @@ class BaseRemoteMachine(object):
         finally:
             dir.delete()
 
+    @contextmanager
+    def as_user(self, username = None):
+        """Run nested commands as the given user. For example::
+
+            head = remote["head"]
+            head("-n1", "/dev/sda1")    # this will fail...
+            with remote.as_user():
+                head("-n1", "/dev/sda1")
+
+        :param username: The user to run commands as. If not given, root (or Administrator) is assumed
+        """
+        if username is None:
+            self._as_user_stack.append(lambda argv: (["sudo"] + list(argv), self.which("sudo")))
+        else:
+            self._as_user_stack.append(lambda argv: (["sudo", "-u", username] + list(argv), self.which("sudo")))
+        try:
+            yield
+        finally:
+            self._as_user_stack.pop(-1)
+
+    def as_root(self):
+        """A shorthand for :func:`as_user("root") <plumbum.machines.remote.RemoteMachine.as_user>`"""
+        return self.as_user()
+
     #
     # Path implementation
     #
@@ -362,6 +387,6 @@ class BaseRemoteMachine(object):
             self.upload(f.name, fn)
 
     def _path_link(self, src, dst, symlink):
-        self._session.run("ln -s %s %s" % ("-s" if symlink else "", shquote(src), shquote(dst)))
+        self._session.run("ln %s %s %s" % ("-s" if symlink else "", shquote(src), shquote(dst)))
 
 

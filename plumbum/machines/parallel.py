@@ -1,9 +1,19 @@
+from contextlib import contextmanager
+
+from plumbum.machines.local import CommandsProvider
 from plumbum.commands.base import BaseCommand
 from plumbum.commands.processes import run_proc, CommandNotFound, ProcessExecutionError
 
+
+class EmptyCluster(Exception):
+    """Raised by :class:`Cluster <plumbum.machines.parallel.Cluster>` when actions are attempted on a cluster
+    that has no machines"""
+    pass
+
+
 def make_concurrent(self, rhs):
     if not isinstance(rhs, BaseCommand):
-        raise TypeError("rhs must be an instance of BaseCommand")
+        return NotImplemented
     if isinstance(self, ConcurrentCommand):
         if isinstance(rhs, ConcurrentCommand):
             self.commands.extend(rhs.commands)
@@ -52,9 +62,13 @@ class ConcurrentPopen(object):
         out_err_tuples = [proc.communicate() for proc in self.procs]
         self.wait()
         return tuple(zip(*out_err_tuples))
+    def _decode(self, bytes):
+        return [proc._decode(b) for (proc, b) in zip(self.procs, bytes)]
+
 
 class ConcurrentCommand(BaseCommand):
     def __init__(self, *commands):
+        assert commands, EmptyConcurrentCommand()
         self.commands = list(commands)
     def formulate(self, level=0, args=()):
         form = ["("]
@@ -74,7 +88,7 @@ class ConcurrentCommand(BaseCommand):
             return ConcurrentCommand(*(cmd[args] for cmd in self.commands))
 
 
-class Cluster(object):
+class Cluster(CommandsProvider):
     def __init__(self, *machines):
         self.machines = list(machines)
     def __enter__(self):
@@ -88,10 +102,14 @@ class Cluster(object):
 
     def add_machine(self, machine):
         self.machines.append(machine)
+    def __len__(self):
+        return len(self.machines)
+    def empty(self):
+        return not self
     def __iter__(self):
         return iter(self.machines)
     def filter(self, pred):
-        return self.__class__(filter(pred, self))
+        return self.__class__(*filter(pred, self))
     def which(self, progname):
         return [mach.which(progname) for mach in self]
     def list_processes(self):
@@ -101,8 +119,12 @@ class Cluster(object):
     def path(self, *parts):
         return [mach.path(*parts) for mach in self]
     def __getitem__(self, progname):
+        if isinstance(progname, int):
+            return self.machines[progname]
         if not isinstance(progname, str):
             raise TypeError("progname must be a string, not %r" % (type(progname,)))
+        if not self.machines:
+            raise EmptyCluster("Cluster is empty")
         return ConcurrentCommand(*(mach[progname] for mach in self))
     def __contains__(self, cmd):
         try:
@@ -114,10 +136,23 @@ class Cluster(object):
 
     @property
     def python(self):
+        if not self.machines:
+            raise EmptyCluster()
         return ConcurrentCommand(*(mach.python for mach in self))
 
     def session(self):
+        if not self.machines:
+            raise EmptyCluster()
         return ClusterSession(*(mach.session() for mach in self))
+
+    @contextmanager
+    def as_user(self, user=None):
+        with nested(*(mach.as_user(user) for mach in self)):
+            yield self
+
+    def as_root(self):
+        return self.as_user()
+
 
 class ClusterSession(object):
 
@@ -176,8 +211,41 @@ if __name__ == "__main__":
     assert(len(set(ret))==3)
 
 
+try:
+    from contextlib import nested
+except ImportError:
+    try:
+        from contextlib import ExitStack
+    except ImportError:
+        # we're probably on python 3.2, so we'll need to redefine the deprecated 'nested' function
 
-
-
-
-
+        import sys
+        @contextmanager
+        def nested(*managers):
+            exits = []
+            vars = []
+            exc = (None, None, None)
+            try:
+                for mgr in managers:
+                    exit, enter = mgr.__exit__, mgr.__enter__
+                    vars.append(enter())
+                    exits.append(exit)
+                yield vars
+            except:
+                exc = sys.exc_info()
+            finally:
+                while exits:
+                    exit = exits.pop()
+                    try:
+                        if exit(*exc):
+                            exc = (None, None, None)
+                    except:
+                        exc = sys.exc_info()
+                if exc != (None, None, None):
+                    e, v, t = exc
+                    raise v.with_traceback(t)
+    else:
+        @contextmanager
+        def nested(*managers):
+            with ExitStack() as stack:
+                yield [stack.enter_context(ctx) for ctx in managers]

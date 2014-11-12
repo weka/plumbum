@@ -199,7 +199,7 @@ class LocalMachineTest(unittest.TestCase):
         from plumbum.cmd import ping
 
         try:
-            for i, (out, err) in enumerate(ping["127.0.0.1", "-i", 0.5].iter_lines(timeout=2)):
+            for i, (out, err) in enumerate(ping["127.0.0.1", "-i", 0.5].popen().iter_lines(timeout=2)):
                 print("out:", out)
                 print("err:", err)
         except ProcessTimedOut:
@@ -211,7 +211,7 @@ class LocalMachineTest(unittest.TestCase):
     def test_iter_lines_error(self):
         from plumbum.cmd import ls
         try:
-            for i, lines in enumerate(ls["--bla"].iter_lines()):
+            for i, lines in enumerate(ls["--bla"].popen()):
                 pass
             self.assertEqual(i, 1)
         except ProcessExecutionError:
@@ -455,7 +455,9 @@ for _ in range(%s):
     def test_pipeline_failure(self):
         from plumbum.cmd import ls, head
         self.assertRaises(ProcessExecutionError, (ls["--no-such-option"] | head))
-    
+
+    def test_cmd(self):
+        local.cmd.ls("/tmp")
 
 if __name__ == "__main__":
     unittest.main()

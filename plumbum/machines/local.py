@@ -6,6 +6,7 @@ import logging
 import time
 import platform
 import re
+from functools import partial
 from plumbum.path.local import LocalPath, LocalWorkdir
 from tempfile import mkdtemp
 from contextlib import contextmanager
@@ -14,6 +15,7 @@ from plumbum.commands import CommandNotFound, ConcreteCommand
 from plumbum.machines.session import ShellSession
 from plumbum.lib import ProcInfo, IS_WIN32, six
 from plumbum.commands.daemons import win32_daemonize, posix_daemonize
+from plumbum.commands.processes import iter_lines
 from plumbum.machines.env import BaseEnv
 
 if sys.version_info >= (3, 2):
@@ -29,6 +31,15 @@ else:
         from subprocess import Popen, PIPE
         has_new_subprocess = False
 
+class IterablePopen(Popen):
+    def __init__(self, *args, **kwargs):
+        self.encoding = kwargs.pop("encoding", None)
+        Popen.__init__(self, *args, **kwargs)
+    def _decode(self, bytes):
+        return bytes.decode(self.encoding)
+    iter_lines = iter_lines
+    def __iter__(self):
+        return self.iter_lines()
 
 logger = logging.getLogger("plumbum.local")
 
@@ -79,6 +90,26 @@ class LocalEnv(BaseEnv):
         return output
 
 #===================================================================================================
+# Commands Provider
+#===================================================================================================
+class CommandsProvider(object):
+
+    class Cmd(object):
+
+        def __init__(self, machine):
+            self._machine = machine
+        def __getattr__(self, name):
+            try:
+                return self._machine[name]
+            except CommandNotFound:
+                raise AttributeError(name)
+
+    @property
+    def cmd(self):
+        return self.Cmd(self)
+
+
+#===================================================================================================
 # Local Commands
 #===================================================================================================
 class LocalCommand(ConcreteCommand):
@@ -105,7 +136,7 @@ class LocalCommand(ConcreteCommand):
 #===================================================================================================
 # Local Machine
 #===================================================================================================
-class LocalMachine(object):
+class LocalMachine(CommandsProvider):
     """The *local machine* (a singleton object). It serves as an entry point to everything
     related to the local machine, such as working directory and environment manipulation,
     command creation, etc.
@@ -210,7 +241,7 @@ class LocalMachine(object):
             return True
 
     def _popen(self, executable, argv, stdin = PIPE, stdout = PIPE, stderr = PIPE,
-            cwd = None, env = None, new_session = False, **kwargs):
+            cwd = None, env = None, new_session = False, ignore_user_stack=False, **kwargs):
         if new_session:
             if has_new_subprocess:
                 kwargs["start_new_session"] = True
@@ -251,14 +282,14 @@ class LocalMachine(object):
         if isinstance(env, BaseEnv):
             env = env.getdict()
 
-        if self._as_user_stack:
+        if not ignore_user_stack and self._as_user_stack:
             argv, executable = self._as_user_stack[-1](argv)
 
         logger.debug("Running %r", argv)
-        proc = Popen(argv, executable = str(executable), stdin = stdin, stdout = stdout,
-            stderr = stderr, cwd = str(cwd), env = env, **kwargs)  # bufsize = 4096
+        proc = IterablePopen(argv, executable = str(executable), stdin = stdin, stdout = stdout,
+            stderr = stderr, cwd = str(cwd), env = env, 
+            encoding = self.encoding, **kwargs)  # bufsize = 4096
         proc._start_time = time.time()
-        proc.encoding = self.encoding
         proc.argv = argv
         return proc
 
