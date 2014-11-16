@@ -121,6 +121,8 @@ class Cluster(CommandsProvider):
     def __getitem__(self, progname):
         if isinstance(progname, int):
             return self.machines[progname]
+        if isinstance(progname, slice):
+            return self.__class__(*self.machines[progname])
         if not isinstance(progname, str):
             raise TypeError("progname must be a string, not %r" % (type(progname,)))
         if not self.machines:
