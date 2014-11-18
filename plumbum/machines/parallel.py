@@ -1,3 +1,4 @@
+from itertools import chain
 from contextlib import contextmanager
 
 from plumbum.machines.local import CommandsProvider
@@ -108,6 +109,8 @@ class Cluster(CommandsProvider):
         return not self
     def __iter__(self):
         return iter(self.machines)
+    def __add__(self, other):
+        return self.__class__(*chain(self, other))
     def filter(self, pred):
         return self.__class__(*filter(pred, self))
     def which(self, progname):
