@@ -57,18 +57,19 @@ if not hasattr(Popen, "kill"):
 # utility functions
 #===================================================================================================
 def _check_process(proc, retcode, timeout, stdout, stderr):
+    machine = getattr(proc, "machine", None)
     if getattr(proc, "_timed_out", False):
         raise ProcessTimedOut("Process did not terminate within %s seconds" % (timeout,),
-            getattr(proc, "argv", None))
+            getattr(proc, "argv", None), machine)
 
     if retcode is not None:
         if hasattr(retcode, "__contains__"):
             if proc.returncode not in retcode:
                 raise ProcessExecutionError(getattr(proc, "argv", None), proc.returncode,
-                    stdout, stderr)
+                    stdout, stderr, machine)
         elif proc.returncode != retcode:
             raise ProcessExecutionError(getattr(proc, "argv", None), proc.returncode,
-                stdout, stderr)
+                stdout, stderr, machine)
     return proc.returncode, stdout, stderr
 
 def _iter_lines(proc, decode, linesize):
@@ -111,8 +112,8 @@ class ProcessExecutionError(EnvironmentError):
     <plumbum.commands.run_proc>`. It contains the process' return code, stdout, and stderr, as
     well as the command line used to create the process (``argv``)
     """
-    def __init__(self, argv, retcode, stdout, stderr):
-        Exception.__init__(self, argv, retcode, stdout, stderr)
+    def __init__(self, argv, retcode, stdout, stderr, machine):
+        Exception.__init__(self, argv, retcode, stdout, stderr, machine)
         self.argv = argv
         self.retcode = retcode
         if six.PY3 and isinstance(stdout, six.bytes):
@@ -121,10 +122,11 @@ class ProcessExecutionError(EnvironmentError):
             stderr = six.ascii(stderr)
         self.stdout = stdout
         self.stderr = stderr
+        self.machine = machine
     def __str__(self):
         stdout = "\n         | ".join(str(self.stdout).splitlines())
         stderr = "\n         | ".join(str(self.stderr).splitlines())
-        lines = ["Command line: %r" % (self.argv,), "Exit code: %s" % (self.retcode)]
+        lines = ["Command line: %r" % (self.argv,), "Exit code: %s" % (self.retcode), "Machine: %s" % (self.machine,)]
         if stdout:
             lines.append("Stdout:  | %s" % (stdout,))
         if stderr:
@@ -134,18 +136,20 @@ class ProcessExecutionError(EnvironmentError):
 class ProcessTimedOut(Exception):
     """Raises by :func:`run_proc <plumbum.commands.run_proc>` when a ``timeout`` has been
     specified and it has elapsed before the process terminated"""
-    def __init__(self, msg, argv):
-        Exception.__init__(self, msg, argv)
+    def __init__(self, msg, argv, machine):
+        Exception.__init__(self, msg, argv, machine)
         self.argv = argv
+        self.machine = machine
 
 class CommandNotFound(Exception):
     """Raised by :func:`local.which <plumbum.machines.local.LocalMachine.which>` and
     :func:`RemoteMachine.which <plumbum.machines.remote.RemoteMachine.which>` when a
     command was not found in the system's ``PATH``"""
-    def __init__(self, program, path):
-        Exception.__init__(self, program, path)
+    def __init__(self, program, path, machine):
+        Exception.__init__(self, program, path, machine)
         self.program = program
         self.path = path
+        self.machine = machine
 
 #===================================================================================================
 # Timeout thread

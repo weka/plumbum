@@ -197,7 +197,7 @@ class BaseRemoteMachine(CommandsProvider):
                 if fn.access("x"):
                     return fn
 
-        raise CommandNotFound(progname, self.env.path)
+        raise CommandNotFound(progname, self.env.path, self)
 
     def __getitem__(self, cmd):
         """Returns a `Command` object representing the given program. ``cmd`` can be a string or

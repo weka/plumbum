@@ -23,7 +23,7 @@ except ImportError:
 logger = logging.getLogger("plumbum.paramiko")
 
 class ParamikoPopen(object):
-    def __init__(self, argv, stdin, stdout, stderr, encoding, stdin_file = None,
+    def __init__(self, argv, stdin, stdout, stderr, encoding, machine, stdin_file = None,
             stdout_file = None, stderr_file = None):
         self.argv = argv
         self.channel = stdout.channel
@@ -31,6 +31,7 @@ class ParamikoPopen(object):
         self.stdout = stdout
         self.stderr = stderr
         self.encoding = encoding
+        self.machine = machine
         self.returncode = None
         self.pid = None
         self.stdin_file = stdin_file
@@ -217,7 +218,7 @@ class ParamikoMachine(BaseRemoteMachine):
         stdin = chan.makefile('wb', -1)
         stdout = chan.makefile('rb', -1)
         stderr = chan.makefile_stderr('rb', -1)
-        proc = ParamikoPopen(["<shell>"], stdin, stdout, stderr, self.encoding)
+        proc = ParamikoPopen(["<shell>"], stdin, stdout, stderr, self.encoding, self)
         return ShellSession(proc, self.encoding, isatty)
 
     @_setdoc(BaseRemoteMachine)
@@ -236,8 +237,9 @@ class ParamikoMachine(BaseRemoteMachine):
         cmdline = " ".join(argv)
         logger.debug(cmdline)
         si, so, se = streams = self._client.exec_command(cmdline, 1)
-        return ParamikoPopen(argv, si, so, se, self.encoding, stdin_file = stdin,
+        proc = ParamikoPopen(argv, si, so, se, self.encoding, self, stdin_file = stdin,
             stdout_file = stdout, stderr_file = stderr)
+        return proc
 
     @_setdoc(BaseRemoteMachine)
     def download(self, src, dst):

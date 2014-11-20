@@ -169,6 +169,7 @@ class BaseCommand(object):
         retcode = kwargs.pop("retcode", 0)
         timeout = kwargs.pop("timeout", None)
         p = self.popen(args, **kwargs)
+        p.machine = self.machine
         was_run = [False]
         def runner():
             if was_run[0]:
