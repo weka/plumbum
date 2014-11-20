@@ -53,13 +53,17 @@ class ParamikoPopen(object):
         self.channel.shutdown_write()
         self.channel.close()
     def kill(self):
-        # possible way to obtain pid:
-        # "(cmd ; echo $?) & echo ?!"
-        # and then client.exec_command("kill -9 %s" % (pid,))
-        raise EnvironmentError("Cannot kill remote processes, we don't have their PIDs")
+        if not self.pid:
+            # possible way to obtain pid:
+            # "(cmd ; echo $?) & echo ?!"
+            # and then client.exec_command("kill -9 %s" % (pid,))
+            raise EnvironmentError("Cannot kill remote processes, we don't have their PIDs")
+        return self.send_signal(9)
     terminate = kill
     def send_signal(self, sig):
-        raise NotImplementedError()
+        if not self.pid:
+            raise NotImplementedError()
+        return self.machine.cmd.kill("-%s" % sig, self.pid)
     def communicate(self):
         stdout = []
         stderr = []
