@@ -35,6 +35,7 @@ class ConcurrentPopen(object):
         self.stderr = None
         self.encoding = None
         self.returncode = None
+        self.machine = list(set(proc.machine for proc in procs))
     @property
     def argv(self):
         return [getattr(proc, "argv", []) for proc in self.procs]
@@ -66,6 +67,9 @@ class ConcurrentCommand(BaseCommand):
     def __init__(self, *commands):
         assert commands, EmptyConcurrentCommand()
         self.commands = list(commands)
+    @property
+    def machine(self):
+        return list(set(cmd.machine for cmd in self.commands))
     def formulate(self, level=0, args=()):
         form = ["("]
         for cmd in self.commands:

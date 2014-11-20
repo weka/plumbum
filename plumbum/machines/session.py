@@ -63,7 +63,7 @@ class MarkedPipe(object):
 class SessionPopen(PopenAddons):
     """A shell-session-based ``Popen``-like object (has the following attributes: ``stdin``,
     ``stdout``, ``stderr``, ``returncode``)"""
-    def __init__(self, proc, argv, isatty, stdin, stdout, stderr, encoding):
+    def __init__(self, proc, argv, isatty, stdin, stdout, stderr, encoding, machine):
         self.proc = proc
         self.argv = argv
         self.isatty = isatty
@@ -73,6 +73,7 @@ class SessionPopen(PopenAddons):
         self.encoding = encoding
         self.returncode = None
         self._done = False
+        self.machine = machine
     def poll(self):
         """Returns the process' exit code or ``None`` if it's still running"""
         if self._done:
@@ -237,7 +238,7 @@ class ShellSession(object):
         self.proc.stdin.flush()
         self._current = SessionPopen(self.proc, full_cmd, self.isatty, self.proc.stdin,
             MarkedPipe(self.proc.stdout, marker), MarkedPipe(self.proc.stderr, marker),
-            self.encoding)
+            self.encoding, self.proc.machine)
         return self._current
 
     def run(self, cmd, retcode = 0):

@@ -33,6 +33,12 @@ else:
         has_new_subprocess = False
 
 class IterablePopen(Popen, PopenAddons):
+    def __init__(self, *args, **kwargs):
+        self.encoding = kwargs.pop("encoding", None)
+        self.machine = kwargs.pop("machine", None)
+        Popen.__init__(self, *args, **kwargs)
+    def _decode(self, bytes):
+        return bytes.decode(self.encoding)
     iter_lines = iter_lines
     def __iter__(self):
         return self.iter_lines()
@@ -195,7 +201,7 @@ class LocalMachine(CommandsProvider):
             path = cls._which(pn)
             if path:
                 return path
-        raise CommandNotFound(progname, list(cls.env.path))
+        raise CommandNotFound(progname, list(cls.env.path), local)
 
     def path(self, *parts):
         """A factory for :class:`LocalPaths <plumbum.path.local.LocalPath>`.
@@ -276,7 +282,8 @@ class LocalMachine(CommandsProvider):
 
         logger.debug("Running %r", argv)
         proc = IterablePopen(argv, executable = str(executable), stdin = stdin, stdout = stdout,
-            stderr = stderr, cwd = str(cwd), env = env, **kwargs)  # bufsize = 4096
+            stderr = stderr, cwd = str(cwd), env = env, machine = self,
+            encoding = self.encoding, **kwargs)  # bufsize = 4096
         proc._start_time = time.time()
         proc.encoding = self.encoding
         proc.argv = argv

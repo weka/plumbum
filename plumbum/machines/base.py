@@ -8,18 +8,17 @@ class PopenAddons(object):
 
     def verify(self, retcode, timeout, stdout, stderr):
         """This verifies that the correct command is attributed."""
+        machine = getattr(self, "machine", None)
+        argv = getattr(self, "argv", None)
         if getattr(self, "_timed_out", False):
-            raise ProcessTimedOut("Process did not terminate within %s seconds" % (timeout,),
-                getattr(self, "argv", None))
+            raise ProcessTimedOut("Process did not terminate within %s seconds" % (timeout,), argv, machine)
 
         if retcode is not None:
             if hasattr(retcode, "__contains__"):
                 if self.returncode not in retcode:
-                    raise ProcessExecutionError(getattr(self, "argv", None), self.returncode,
-                        stdout, stderr)
+                    raise ProcessExecutionError(argv, self.returncode, stdout, stderr, machine)
             elif self.returncode != retcode:
-                raise ProcessExecutionError(getattr(self, "argv", None), self.returncode,
-                    stdout, stderr)
+                raise ProcessExecutionError(argv, self.returncode, stdout, stderr, machine)
 
 
 class BaseMachine(object):
