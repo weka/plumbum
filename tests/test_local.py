@@ -37,6 +37,16 @@ class LocalPathTest(unittest.TestCase):
         self.assertTrue(isinstance(name, LocalPath))
         self.assertEqual("/some/long/path/to", str(name).replace("\\", "/"))
 
+    def test_indexing(self):
+        p = LocalPath("/some/long/path/to/dir")
+        self.assertEqual(p[:-1], LocalPath("/some/long/path/to"))
+        self.assertEqual(p[1:-1], RelativePath("long/path/to".split("/")))
+        self.assertEqual(p[1], "long")
+        self.assertEqual(p[::2], "some path dir".split())
+        self.assertEqual(p['file.txt'], LocalPath("/some/long/path/to/dir/file.txt"))
+        self.assertEqual(p['subdir/file.txt'], LocalPath("/some/long/path/to/dir/subdir/file.txt"))
+        self.assertEqual(p['/root/file.txt'], LocalPath("/root/file.txt"))
+
     @unittest.skipIf(not hasattr(os, "chown"), "os.chown not supported")
     def test_chown(self):
         with local.tempdir() as dir:
