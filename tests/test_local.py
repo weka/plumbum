@@ -53,6 +53,16 @@ class TestLocalPath:
             LocalPath()
         assert local.path() == local.path('.')
 
+    def test_indexing(self):
+        p = LocalPath("/some/long/path/to/dir")
+        self.assertEqual(p[:-1], LocalPath("/some/long/path/to"))
+        self.assertEqual(p[1:-1], RelativePath("long/path/to".split("/")))
+        self.assertEqual(p[1], "long")
+        self.assertEqual(p[::2], "some path dir".split())
+        self.assertEqual(p['file.txt'], LocalPath("/some/long/path/to/dir/file.txt"))
+        self.assertEqual(p['subdir/file.txt'], LocalPath("/some/long/path/to/dir/subdir/file.txt"))
+        self.assertEqual(p['/root/file.txt'], LocalPath("/root/file.txt"))
+
     @skip_without_chown
     def test_chown(self):
         with local.tempdir() as dir:

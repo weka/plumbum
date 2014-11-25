@@ -69,7 +69,18 @@ class Path(str, six.ABC):
         return bool(str(self))
     __bool__ = __nonzero__
 
-    @abstractmethod
+    def __getitem__(self, key):
+        if isinstance(key, str):
+            return self / key
+        parts = self.split()[key]
+        if not isinstance(key, slice):
+            return parts
+        if (key.step or 1) != 1:
+            return parts
+        if (key.start or 0) > 0:
+            return RelativePath(parts)
+        return self._form("/", *parts)
+
     def _form(self, *parts):
         pass
 
