@@ -296,4 +296,5 @@ def iter_lines(proc, retcode = 0, timeout = None, linesize = -1, _iter_lines = _
         yield ret
 
     # this will take care of checking return code and timeouts
-    _check_process(proc, retcode, timeout, *(s.getvalue() for s in buffers))
+    proc.stdout, proc.stderr = (s.getvalue() for s in buffers)
+    _check_process(proc, retcode, timeout, proc.stdout, proc.stderr)
