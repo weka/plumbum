@@ -269,12 +269,16 @@ def iter_lines(proc, retcode = 0, timeout = None, linesize = -1, _iter_lines = _
 
     _register_proc_timeout(proc, timeout)
 
-    buffers = [StringIO(), StringIO()]
+    buffers = [[], []]
     for t, line in _iter_lines(proc, decode, linesize, line_timeout):
         ret = [None, None]
         ret[t] = line
-        buffers[t].write(line + "\n")
+        buff = buffers[t]
+        buff.append(line)
+        if len(buff) > 100:
+            buff[:2] = ["<...previous lines omitted...>"]
         yield ret
 
     # this will take care of checking return code and timeouts
-    _check_process(proc, retcode, timeout, *(s.getvalue() for s in buffers))
+    proc.stdout, proc.stderr = ("\n".join(s) for s in buffers)
+    _check_process(proc, retcode, timeout, proc.stdout, proc.stderr)
