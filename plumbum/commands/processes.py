@@ -294,7 +294,7 @@ def iter_lines(proc, retcode = 0, timeout = None, linesize = -1, _iter_lines = _
         ret[t] = line
         buffers[t].append(line)
         if len(buffers[t]) > 100:
-            buffers[:2] = ["<...previous lines omitted...>"]
+            buffers[t][:2] = ["<...previous lines omitted...>"]
         yield ret
 
     # this will take care of checking return code and timeouts
