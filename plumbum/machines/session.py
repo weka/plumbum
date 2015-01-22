@@ -134,6 +134,7 @@ class ShellSession(object):
         self.encoding = proc.encoding if encoding == "auto" else encoding
         self.isatty = isatty
         self._current = None
+        self.lock = threading.RLock()
         if connect_timeout:
             def closer():
                 shell_logger.error("Connection to %s timed out (%d sec)", proc, connect_timeout)
@@ -223,5 +224,6 @@ class ShellSession(object):
                         ignore erroneous return codes
         :returns: A tuple of (return code, stdout, stderr)
         """
-        return run_proc(self.popen(cmd), retcode)
+        with self.lock:
+            return run_proc(self.popen(cmd), retcode)
 
