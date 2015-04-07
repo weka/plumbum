@@ -129,7 +129,7 @@ class ShellSession(object):
     :param connect_timeout: The timeout to connect to the shell, after which, if no prompt
                             is seen, the shell process is killed
     """
-    def __init__(self, proc, encoding = "auto", isatty = False, connect_timeout = 5):
+    def __init__(self, proc, encoding = "auto", isatty = False, connect_timeout = 30):
         self.proc = proc
         self.encoding = proc.encoding if encoding == "auto" else encoding
         self.isatty = isatty
@@ -139,7 +139,7 @@ class ShellSession(object):
             def closer():
                 shell_logger.error("Connection to %s timed out (%d sec)", proc, connect_timeout)
                 self.close()
-            timer = threading.Timer(connect_timeout, self.close)
+            timer = threading.Timer(connect_timeout, closer)
             timer.start()
         self.run("")
         if connect_timeout:
