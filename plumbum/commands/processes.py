@@ -126,7 +126,7 @@ class ProcessExecutionError(EnvironmentError):
     def __str__(self):
         stdout = "\n         | ".join(str(self.stdout).splitlines())
         stderr = "\n         | ".join(str(self.stderr).splitlines())
-        lines = ["Command line: %r" % (self.argv,), "Exit code: %s" % (self.retcode), "Machine: %s" % (self.machine,)]
+        lines = ["Command line: %r" % " ".join(self.argv), "Exit code: %s" % (self.retcode), "Machine: %s" % (self.machine,)]
         if stdout:
             lines.append("Stdout:  | %s" % (stdout,))
         if stderr:
