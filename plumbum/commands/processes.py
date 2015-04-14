@@ -114,6 +114,10 @@ class ProcessExecutionError(EnvironmentError):
     """
     def __init__(self, argv, retcode, stdout, stderr, machine):
         Exception.__init__(self, argv, retcode, stdout, stderr, machine)
+        if isinstance(argv, six.bytes):
+            if six.PY3:
+                argv = six.ascii(argv)
+            argv = [argv]
         self.argv = argv
         self.retcode = retcode
         if six.PY3 and isinstance(stdout, six.bytes):
