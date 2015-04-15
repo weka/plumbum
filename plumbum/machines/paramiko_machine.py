@@ -167,7 +167,7 @@ class ParamikoMachine(BaseRemoteMachine):
 
     def __init__(self, host, user = None, port = None, password = None, keyfile = None,
             load_system_host_keys = True, missing_host_policy = None, encoding = "utf8",
-            look_for_keys = None, connect_timeout = None):
+            look_for_keys = None, connect_timeout = None, tcp_keepalive = False):
         self.host = host
         kwargs = {}
         if user:
@@ -188,6 +188,13 @@ class ParamikoMachine(BaseRemoteMachine):
             self._client.set_missing_host_key_policy(missing_host_policy)
         if look_for_keys is not None:
             kwargs["look_for_keys"] = look_for_keys
+        if tcp_keepalive:
+            kwargs['sock'] = sock = socket.socket()
+            sock.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
+            if connect_timeout:
+                sock.settimeout(connect_timeout)
+            from paramiko.config import SSH_PORT
+            sock.connect((host, port or SSH_PORT))
         if connect_timeout is not None:
             kwargs["timeout"] = connect_timeout
         self._client.connect(host, **kwargs)
