@@ -161,7 +161,7 @@ class ParamikoMachine(BaseRemoteMachine):
         def __lshift__(self, *_):
             raise NotImplementedError("Not supported with ParamikoMachine")
 
-    def __init__(self, host, user = None, port = None, password = None, keyfile = None,
+    def __init__(self, host, user = None, port = None, password = None, pkey = None, keyfile = None,
             load_system_host_keys = True, missing_host_policy = None, encoding = "utf8",
             look_for_keys = None, connect_timeout = None, keep_alive = 0):
         self.host = host
@@ -176,6 +176,8 @@ class ParamikoMachine(BaseRemoteMachine):
             self._client.load_system_host_keys()
         if port is not None:
             kwargs["port"] = port
+        if pkey is not None:
+            kwargs["pkey"] = pkey
         if keyfile is not None:
             kwargs["key_filename"] = keyfile
         if password is not None:
