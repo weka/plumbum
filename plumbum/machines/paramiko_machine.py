@@ -165,15 +165,15 @@ class ParamikoMachine(BaseRemoteMachine):
             load_system_host_keys = True, missing_host_policy = None, encoding = "utf8",
             look_for_keys = None, connect_timeout = None, keep_alive = 0):
         self.host = host
-        kwargs = {}
+        kwargs = {'hostname': host}
         if user:
             self._fqhost = "%s@%s" % (user, host)
             kwargs['username'] = user
         else:
             self._fqhost = host
-        self._client = paramiko.SSHClient()
+        self._paramiko_client = paramiko.SSHClient()
         if load_system_host_keys:
-            self._client.load_system_host_keys()
+            self._paramiko_client.load_system_host_keys()
         if port is not None:
             kwargs["port"] = port
         if pkey is not None:
@@ -183,22 +183,53 @@ class ParamikoMachine(BaseRemoteMachine):
         if password is not None:
             kwargs["password"] = password
         if missing_host_policy is not None:
-            self._client.set_missing_host_key_policy(missing_host_policy)
+            self._paramiko_client.set_missing_host_key_policy(missing_host_policy)
         if look_for_keys is not None:
             kwargs["look_for_keys"] = look_for_keys
+        self._keep_alive = keep_alive
+        if keep_alive:
+            def make_socket():
+                sock = socket.socket()
+                sock.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
+                if connect_timeout:
+                    sock.settimeout(connect_timeout)
+                from paramiko.config import SSH_PORT
+                sock.connect((host, port or SSH_PORT))
+                return sock
+        else:
+            def make_socket():
+                pass
         if connect_timeout is not None:
             kwargs["timeout"] = connect_timeout
-        self._client.connect(host, **kwargs)
-        self._keep_alive = keep_alive
+        self._connect_params = kwargs
+        self._make_socket = make_socket
+        self._connected = False
+        self._client
         self._sftp = None
         BaseRemoteMachine.__init__(self, encoding, connect_timeout)
+
+    @property
+    def _client(self):
+        if not self._connected:
+            self._paramiko_client.connect(sock=self._make_socket(), **self._connect_params)
+            self._connected = True
+        return self._paramiko_client
+
+    @property
+    def connected(self):
+        return self._connected
+
+    def disconnect(self):
+        self._paramiko_client.close()
+        self._connected = False
 
     def __str__(self):
         return "paramiko://%s" % (self._fqhost,)
 
     def close(self):
         BaseRemoteMachine.close(self)
-        self._client.close()
+        if self._connected:
+            self._client.close()
 
     @property
     def sftp(self):
