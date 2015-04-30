@@ -58,6 +58,9 @@ if not hasattr(Popen, "kill"):
 #===================================================================================================
 def _check_process(proc, retcode, timeout, stdout, stderr):
     machine = getattr(proc, "machine", None)
+    on_done = getattr(proc, "on_done", None)
+    if on_done:
+        on_done(proc=proc, retcode=retcode, timeout=timeout, stdout=stdout, stderr=stderr)
     if getattr(proc, "_timed_out", False):
         raise ProcessTimedOut("Process did not terminate within %s seconds" % (timeout,),
             getattr(proc, "argv", None), machine)
