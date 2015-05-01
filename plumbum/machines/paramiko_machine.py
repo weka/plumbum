@@ -1,6 +1,7 @@
 import logging
 import errno
 import socket
+import threading
 from plumbum.machines.remote import BaseRemoteMachine
 from plumbum.machines.session import ShellSession
 from plumbum.lib import _setdoc, six
@@ -206,6 +207,7 @@ class ParamikoMachine(BaseRemoteMachine):
             kwargs["timeout"] = connect_timeout
         self._connect_params = kwargs
         self._make_socket = make_socket
+        self._connection_lock = threading.RLock()
         self._connected = False
         self._client
         self._sftp = None
@@ -214,16 +216,15 @@ class ParamikoMachine(BaseRemoteMachine):
     @property
     def _client(self):
         if not self._connected:
-            self._paramiko_client.connect(sock=self._make_socket(), **self._connect_params)
-            self._connected = True
+            with self._connection_lock:
+                if not self._connected:
+                    self._paramiko_client.connect(sock=self._make_socket(), **self._connect_params)
+                self._connected = True
         return self._paramiko_client
 
-    @property
-    def connected(self):
-        return self._connected
-
     def disconnect(self):
-        self._paramiko_client.close()
+        with self._connection_lock:
+            self._paramiko_client.close()
         self._connected = False
 
     def __str__(self):
@@ -232,7 +233,7 @@ class ParamikoMachine(BaseRemoteMachine):
     def close(self):
         BaseRemoteMachine.close(self)
         if self._connected:
-            self._client.close()
+            self._paramiko_client.close()
 
     @property
     def sftp(self):
