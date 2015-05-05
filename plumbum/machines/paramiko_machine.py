@@ -209,8 +209,8 @@ class ParamikoMachine(BaseRemoteMachine):
         self._make_socket = make_socket
         self._connection_lock = threading.RLock()
         self._connected = False
-        self._client
         self._sftp = None
+        self._client  # make it connect
         BaseRemoteMachine.__init__(self, encoding, connect_timeout)
 
     @property
@@ -226,6 +226,7 @@ class ParamikoMachine(BaseRemoteMachine):
         with self._connection_lock:
             self._paramiko_client.close()
         self._connected = False
+        self._sftp = None
 
     def __str__(self):
         return "paramiko://%s" % (self._fqhost,)
@@ -233,7 +234,7 @@ class ParamikoMachine(BaseRemoteMachine):
     def close(self):
         BaseRemoteMachine.close(self)
         if self._connected:
-            self._paramiko_client.close()
+            self.disconnect()
 
     @property
     def sftp(self):
@@ -241,7 +242,7 @@ class ParamikoMachine(BaseRemoteMachine):
         Returns an SFTP client on top of the current SSH connection; it can be used to manipulate
         files directly, much like an interactive FTP/SFTP session
         """
-        if not self._sftp:
+        if not self._sftp or not self._connected:
             self._sftp = self._client.open_sftp()
         return self._sftp
 
