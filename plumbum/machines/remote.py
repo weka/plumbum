@@ -264,14 +264,19 @@ class BaseRemoteMachine(CommandsProvider):
         process"""
         raise NotImplementedError()
 
-    def list_processes(self):
+    def list_processes(self, *pids):
         """
-        Returns information about all running processes (on POSIX systems: using ``ps``)
+        Returns information about all (or specified) running processes (on POSIX systems: using ``ps``)
 
         .. versionadded:: 1.3
         """
         ps = self["ps"]
-        lines = ps("-e", "-o", "pid,uid,stat,args").splitlines()
+        if pids:
+            for pid in pids:
+                ps = ps["-p", pid]
+        else:
+            ps = ps["-e"]
+        lines = ps("-o", "pid,uid,stat,args").splitlines()
         lines.pop(0) # header
         for line in lines:
             parts = line.strip().split()
