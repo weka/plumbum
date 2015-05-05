@@ -307,13 +307,14 @@ class LocalMachine(CommandsProvider):
             return posix_daemonize(command, cwd, stdout, stderr, append)
 
     if IS_WIN32:
-        def list_processes(self):
+        def list_processes(self, *pids):
             """
             Returns information about all running processes (on Windows: using ``tasklist``)
 
             .. versionadded:: 1.3
             """
             import csv
+            pids = set(map(int, pids))
             tasklist = local["tasklist"]
             output = tasklist("/V", "/FO", "CSV")
             if not six.PY3:
@@ -327,21 +328,30 @@ class LocalMachine(CommandsProvider):
             statidx = header.index('Status')
             useridx = header.index('User Name')
             for row in rows:
-                yield ProcInfo(int(row[pididx]), row[useridx],
+                pid = int(row[pididx])
+                if pids and pid not in pids:
+                    continue
+                yield ProcInfo(pid, row[useridx],
                     row[statidx], row[imgidx])
     else:
-        def list_processes(self):
+        def list_processes(self, *pids):
             """
-            Returns information about all running processes (on POSIX systems: using ``ps``)
+            Returns information about all (or specified) running processes (on POSIX systems: using ``ps``)
 
             .. versionadded:: 1.3
             """
             ps = self["ps"]
-            lines = ps("-e", "-o", "pid,uid,stat,args").splitlines()
+            if pids:
+                for pid in pids:
+                    ps = ps["-p", pid]
+            else:
+                ps = ps["-e"]
+            lines = ps("-o", "pid,uid,stat,args").splitlines()
             lines.pop(0) # header
             for line in lines:
                 parts = line.strip().split()
                 yield ProcInfo(int(parts[0]), int(parts[1]), parts[2], " ".join(parts[3:]))
+
 
     def pgrep(self, pattern):
         """
