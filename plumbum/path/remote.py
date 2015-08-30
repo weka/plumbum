@@ -1,4 +1,3 @@
-from __future__ import with_statement
 import errno
 from contextlib import contextmanager
 from plumbum.path.base import Path, FSUser
@@ -79,6 +78,21 @@ class RemotePath(Path):
 
     @property
     @_setdoc(Path)
+    def suffix(self):
+        return '.' + self.basename.rsplit('.',1)[1]
+
+    @property
+    @_setdoc(Path)
+    def suffixes(self):
+        name = self.basename
+        exts = []
+        while '.' in name:
+            name, ext = name.rsplit('.',1)
+            exts.append('.' + ext)
+        return list(reversed(exts))
+
+    @property
+    @_setdoc(Path)
     def uid(self):
         uid, name = self.remote._path_getuid(self)
         return FSUser(int(uid), name)
@@ -133,6 +147,20 @@ class RemotePath(Path):
         if res is None:
             raise OSError(errno.ENOENT)
         return res
+
+    @_setdoc(Path)
+    def with_name(self, name):
+        return self.__class__(self.remote, self.dirname) / name
+
+    @_setdoc(Path)
+    def with_suffix(self, suffix, depth=1):
+        if (suffix and not suffix.startswith('.') or suffix == '.'):
+            raise ValueError("Invalid suffix %r" % (suffix))
+        name = self.basename
+        depth = len(self.suffixes) if depth is None else min(depth, len(self.suffixes))
+        for i in range(depth):
+            name, ext = name.rsplit('.',1)
+        return self.__class__(self.remote, self.dirname) / (name + suffix)
 
     @_setdoc(Path)
     def glob(self, pattern):
@@ -221,6 +249,8 @@ class RemotePath(Path):
             raise TypeError("dst must be a string or a RemotePath (to the same remote machine), "
                 "got %r" % (dst,))
         self.remote._path_link(self, dst, True)
+    def open(self):
+        pass
 
     @_setdoc(Path)
     def truncate(self, size=0):

@@ -26,6 +26,7 @@
 
 Plumbum: Shell Combinators and More
 ===================================
+
 .. comment raw:: html
 
    <div style="width:795px; margin: 1em 0 2em 0; display: block; padding: 1em; border: 1px dotted #DDD; 
@@ -54,21 +55,24 @@ and cross-platform**.
 Apart from :ref:`shell-like syntax <guide-local-commands>` and :ref:`handy shortcuts <guide-utils>`, 
 the library provides local and :ref:`remote <guide-remote-commands>` command execution (over SSH), 
 local and remote file-system :ref:`paths <guide-paths>`, easy working-directory and 
-environment :ref:`manipulation <guide-local-machine>`, and a programmatic 
+environment :ref:`manipulation <guide-local-machine>`, quick access to ANSI :ref:`colors <guide-colors>`, and a programmatic 
 :ref:`guide-cli` application toolkit. Now let's see some code!
 
 News
 ====
+
 .. include:: _news.rst
 
 * :doc:`changelog`
 
 Cheat Sheet
 ===========
+
 .. include:: _cheatsheet.rst
 
 Development and Installation
 ============================
+
 The library is developed on `github <https://github.com/tomerfiliba/plumbum>`_, and will happily 
 accept `patches <http://help.github.com/send-pull-requests/>`_ from users. Please use the github's 
 built-in `issue tracker <https://github.com/tomerfiliba/plumbum/issues>`_ to report any problem 
@@ -78,7 +82,7 @@ you encounter or to request features. The library is released under the permissi
 Requirements
 ------------
 
-Plumbum supports **Python 2.5-3.3** and has been 
+Plumbum supports **Python 2.6-3.4** and has been 
 tested on **Linux** and **Windows** machines. Any Unix-like machine should work fine out of the box,
 but on Windows, you'll probably want to install a decent `coreutils <http://en.wikipedia.org/wiki/Coreutils>`_ 
 environment and add it to your ``PATH``. I can recommend `mingw <http://mingw.org/>`_ (which comes 
@@ -110,13 +114,13 @@ you read it in order.
    remote
    utils
    cli
+   colors
    changelog
-   whatsnew/whatsnew1_3
 
 API Reference
 =============
 The API reference (generated from the *docstrings* within the library) covers all of the 
-exposed APIs of the library. Note that some "advance" features and some function parameters are 
+exposed APIs of the library. Note that some "advanced" features and some function parameters are 
 missing from the guide, so you might want to consult with the API reference in these cases. 
 
 .. toctree::
@@ -127,6 +131,8 @@ missing from the guide, so you might want to consult with the API reference in t
    api/machines
    api/path
    api/fs
+   api/colors
+   colorlib
 
 About
 =====

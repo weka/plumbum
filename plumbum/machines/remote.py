@@ -1,10 +1,10 @@
-from __future__ import with_statement
 import re
 from contextlib import contextmanager
 from plumbum.commands import CommandNotFound, shquote, ConcreteCommand
 from plumbum.lib import _setdoc, ProcInfo, six
 from plumbum.machines.local import LocalPath, CommandsProvider
 from tempfile import NamedTemporaryFile
+from plumbum.machines.base import BaseMachine
 from plumbum.machines.env import BaseEnv
 from plumbum.path.remote import RemotePath, RemoteWorkdir, StatRes
 
@@ -15,8 +15,24 @@ class RemoteEnv(BaseEnv):
     __slots__ = ["_orig", "remote"]
     def __init__(self, remote):
         self.remote = remote
-        self._curr = dict(line.split("=", 1) for line in
-                          self.remote._session.run("env -0; echo")[1].split("\x00") if "=" in line)
+        session = remote._session
+        # GNU env has a -0 argument; use it if present. Otherwise,
+        # fall back to calling printenv on each (possible) variable
+        # from plain env.
+        env0 = session.run("env -0; echo")
+        if env0[0] == 0 and not env0[2].rstrip():
+            self._curr = dict(line.split('=', 1)
+                              for line in env0[1].split('\x00')
+                              if '=' in line)
+        else:
+            lines = session.run("env; echo")[1].splitlines()
+            split = (line.split('=', 1) for line in lines)
+            keys = (line[0] for line in split if len(line)>1)
+            runs = ((key, session.run('printenv "%s"; echo' % key))
+                    for key in keys)
+            self._curr = dict((key, run[1].rstrip('\n')) for (key, run) in runs
+                              if run[0] == 0 and run[1].rstrip('\n')
+                              and not run[2])
         self._orig = self._curr.copy()
         BaseEnv.__init__(self, self.remote.path, ":")
 
@@ -221,17 +237,6 @@ class BaseRemoteMachine(CommandsProvider):
         else:
             raise TypeError("cmd must not be a LocalPath: %r" % (cmd,))
 
-    def __contains__(self, cmd):
-        """Tests for the existance of the command, e.g., ``"ls" in remote_machine``.
-        ``cmd`` can be anything acceptable by ``__getitem__``.
-        """
-        try:
-            self[cmd]
-        except CommandNotFound:
-            return False
-        else:
-            return True
-
     @property
     def python(self):
         """A command that represents the default remote python interpreter"""
@@ -295,7 +300,7 @@ class BaseRemoteMachine(CommandsProvider):
     def tempdir(self):
         """A context manager that creates a remote temporary directory, which is removed when
         the context exits"""
-        _, out, _ = self._session.run("mktemp -d")
+        _, out, _ = self._session.run("mktemp -d tmp.XXXXXXXXXX")
         dir = self.path(out.strip())  # @ReservedAssignment
         try:
             yield dir
@@ -341,12 +346,17 @@ class BaseRemoteMachine(CommandsProvider):
         return matches
 
     def _path_getuid(self, fn):
-        return self._session.run("stat -c '%u,%U' " + shquote(fn))[1].strip().split(",")
+        stat_cmd = "stat -c '%u,%U' " if self.uname != 'Darwin' else "stat -f '%u,%Su' "
+        return self._session.run(stat_cmd + shquote(fn))[1].strip().split(",")
     def _path_getgid(self, fn):
-        return self._session.run("stat -c '%g,%G' " + shquote(fn))[1].strip().split(",")
+        stat_cmd = "stat -c '%g,%G' " if self.uname != 'Darwin' else "stat -f '%g,%Sg' "
+        return self._session.run(stat_cmd + shquote(fn))[1].strip().split(",")
     def _path_stat(self, fn):
-        rc, out, _ = self._session.run("stat -c '%F,%f,%i,%d,%h,%u,%g,%s,%X,%Y,%Z' " + shquote(fn),
-            retcode = None)
+        if self.uname != 'Darwin':
+            stat_cmd = "stat -c '%F,%f,%i,%d,%h,%u,%g,%s,%X,%Y,%Z' "
+        else:
+            stat_cmd = "stat -f '%HT,%Xp,%i,%d,%l,%u,%g,%z,%a,%m,%c' "
+        rc, out, _ = self._session.run(stat_cmd + shquote(fn), retcode = None)
         if rc != 0:
             return None
         statres = out.strip().split(",")
@@ -397,4 +407,3 @@ class BaseRemoteMachine(CommandsProvider):
 
     def _path_truncate(self, fn, size):
         self._session.run("truncate --size=%d %s" % (size, shquote(fn)))
-

@@ -1,4 +1,3 @@
-from __future__ import with_statement
 import subprocess
 import functools
 from contextlib import contextmanager
@@ -178,6 +177,7 @@ class BaseCommand(object):
             try:
                 return run_proc(p, retcode, timeout)
             finally:
+                del p.run  # to break cyclic reference p -> cell -> p
                 for f in [p.stdin, p.stdout, p.stderr]:
                     try:
                         f.close()

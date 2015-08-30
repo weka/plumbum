@@ -1,14 +1,14 @@
-from __future__ import with_statement
 import os
 import unittest
 import sys
 import signal
 import time
-from plumbum import local, LocalPath, FG, BG, ERROUT
+from plumbum import local, LocalPath, FG, BG, TF, RETCODE, ERROUT
 from plumbum.lib import six
 from plumbum import CommandNotFound, ProcessExecutionError, ProcessTimedOut
 from plumbum.fs.atomic import AtomicFile, AtomicCounterFile, PidFile
 from plumbum.path import RelativePath
+import plumbum
 
 
 if not hasattr(unittest, "skipIf"):
@@ -61,6 +61,25 @@ class LocalPathTest(unittest.TestCase):
         p = local.path("/var/log/messages")
         self.assertEqual(p.split(), ["var", "log", "messages"])
 
+    def test_suffix(self):
+        p1 = local.path("/some/long/path/to/file.txt")
+        p2 = local.path("file.tar.gz")
+        self.assertEqual(p1.suffix, ".txt")
+        self.assertEqual(p1.suffixes, [".txt"])
+        self.assertEqual(p2.suffix, ".gz")
+        self.assertEqual(p2.suffixes, [".tar",".gz"])
+        self.assertEqual(p1.with_suffix(".tar.gz"), local.path("/some/long/path/to/file.tar.gz"))
+        self.assertEqual(p2.with_suffix(".other"), local.path("file.tar.other"))
+        self.assertEqual(p2.with_suffix(".other", 2), local.path("file.other"))
+        self.assertEqual(p2.with_suffix(".other", 0), local.path("file.tar.gz.other"))
+        self.assertEqual(p2.with_suffix(".other", None), local.path("file.other"))
+
+    def test_newname(self):
+        p1 = local.path("/some/long/path/to/file.txt")
+        p2 = local.path("file.tar.gz")
+        self.assertEqual(p1.with_name("something.tar"), local.path("/some/long/path/to/something.tar"))
+        self.assertEqual(p2.with_name("something.tar"), local.path("something.tar"))
+
     def test_relative_to(self):
         p = local.path("/var/log/messages")
         self.assertEqual(p.relative_to("/var/log/messages"), RelativePath([]))
@@ -72,7 +91,7 @@ class LocalPathTest(unittest.TestCase):
         for src in [local.path("/var/log/messages"), local.path("/var"), local.path("/opt/lib")]:
             delta = p.relative_to(src)
             self.assertEqual(src + delta, p)
-    
+
     def test_read_write(self):
         with local.tempdir() as dir:
             f = dir / "test.txt"
@@ -84,8 +103,12 @@ class LocalPathTest(unittest.TestCase):
 
 class LocalMachineTest(unittest.TestCase):
     def test_getattr(self):
-        import plumbum
-        self.assertEqual(getattr(plumbum.cmd, 'does_not_exist', 1), 1)
+        pb = plumbum
+        self.assertEqual(getattr(pb.cmd, 'does_not_exist', 1), 1)
+        ls_cmd1 = pb.cmd.non_exist1N9 if hasattr(pb.cmd, 'non_exist1N9') else pb.cmd.ls
+        ls_cmd2 = getattr(pb.cmd, 'non_exist1N9', pb.cmd.ls)
+        self.assertEqual(str(ls_cmd1), str(local['ls']))
+        self.assertEqual(str(ls_cmd2), str(local['ls']))
 
     def test_imports(self):
         from plumbum.cmd import ls
@@ -101,6 +124,13 @@ class LocalMachineTest(unittest.TestCase):
         else:
             self.fail("from plumbum.cmd import non_exist1N9")
 
+    def test_get(self):
+        self.assertEqual(str(local['ls']),str(local.get('ls')))
+        self.assertEqual(str(local['ls']),str(local.get('non_exist1N9', 'ls')))
+        self.assertRaises(CommandNotFound, lambda: local.get("non_exist1N9"))
+        self.assertRaises(CommandNotFound, lambda: local.get("non_exist1N9", "non_exist1N8"))
+        self.assertRaises(CommandNotFound, lambda: local.get("non_exist1N9", "/tmp/non_exist1N8"))
+
     def test_cwd(self):
         from plumbum.cmd import ls
         self.assertEqual(local.cwd, os.getcwd())
@@ -109,6 +139,13 @@ class LocalMachineTest(unittest.TestCase):
             self.assertTrue("__init__.py" in ls().splitlines())
         self.assertTrue("__init__.py" not in ls().splitlines())
         self.assertRaises(OSError, local.cwd.chdir, "../non_exist1N9")
+
+    def test_mixing_chdir(self):
+        self.assertEqual(local.cwd, os.getcwd())
+        os.chdir('../plumbum')
+        self.assertEqual(local.cwd, os.getcwd())
+        os.chdir('../tests')
+        self.assertEqual(local.cwd, os.getcwd())
 
     def test_path(self):
         self.assertFalse((local.cwd / "../non_exist1N9").exists())
@@ -236,7 +273,15 @@ class LocalMachineTest(unittest.TestCase):
         f.wait()
         self.assertTrue("test_local.py" in f.stdout.splitlines())
 
-        (ls["-a"] | grep["local"]) & FG
+        command = (ls["-a"] | grep["local"])
+        command_false = (ls["-a"] | grep["not_a_file_here"])
+        command & FG
+        self.assertTrue(command & TF)
+        self.assertFalse(command_false & TF)
+        self.assertEqual(command & RETCODE, 0)
+        self.assertEqual(command_false & RETCODE, 1)
+
+
 
     def test_arg_expansion(self):
         from plumbum.cmd import ls
@@ -461,7 +506,7 @@ for _ in range(%s):
 
     def test_issue_139(self):
         LocalPath(local.cwd)
-    
+
     def test_pipeline_failure(self):
         from plumbum.cmd import ls, head
         self.assertRaises(ProcessExecutionError, (ls["--no-such-option"] | head))

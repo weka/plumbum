@@ -15,13 +15,30 @@ and serves as a factory for command objects::
     <LocalCommand c:\windows\notepad.exe>
 
 If you don't specify a full path, the program is searched for in your system's ``PATH`` (and if no
-match is found, an exception is raised). Otherwise, the full path is used as given. Once you have
-a ``Command`` object, you can execute it like a normal function::
+match is found, a ``CommandNotFound`` exception is raised). Otherwise, the full path is used as given.
+Once you have a ``Command`` object, you can execute it like a normal function::
 
     >>> ls()
     'README.rst\nplumbum\nsetup.py\ntests\ntodo.txt\n'
     >>> ls("-a")
     '.\n..\n.git\n.gitignore\n.project\n.pydevproject\nREADME.rst\n[...]'
+
+.. _fallbacks:
+
+If you use the ``.get()`` method instead of ``[]``, you can include fallbacks to try if the
+first command does not exist on the machine. This can be used to get one of several
+equivalent commands, or it can be used to check for common locations of a command if
+not in the path. For example::
+
+    pandoc = local.get('pandoc',
+                       '~/AppData/Local/Pandoc/pandoc.exe',
+                       '/Program Files/Pandoc/pandoc.exe',
+                       '/Program Files (x86)/Pandoc/pandoc.exe')
+
+An exception is still raised if none of the commands are found. Unlike ``[]`` access,
+an exception will be raised if the executable does not exist.
+
+.. versionadded:: 1.5.1
 
 .. _import-hack:
 
@@ -42,6 +59,8 @@ With just a touch of magic, you can *import* commands from the mock module ``cmd
 If underscores (``_``) appear in the name, and the name cannot be found in the path as-is, 
 the underscores will be replaced by hyphens (``-``) and the name will be looked up again.
 This allows you to import ``apt_get`` for ``apt-get``.
+
+.. _guide-local-commands-pipelining:
 
 Pipelining
 ----------
@@ -67,6 +86,8 @@ using ``|`` (bitwise-or)::
     >>>
     >>> chain()
     '-rw-r--r--    1 sebulba  Administ        0 Apr 27 11:54 setup.py\n'
+
+.. _guide-local-commands-redir:
 
 Input/Output Redirection
 ------------------------
@@ -128,6 +149,34 @@ one you passed::
 .. note::
    If you wish to accept several valid exit codes, ``retcode`` may be a tuple or a list. 
    For instance, ``grep("foo", "myfile.txt", retcode = (0, 2))``   
+   
+   If you need to have both the output/error and the exit code (using exceptions would provide either 
+   but not both), you can use the `run` method, which will provide all of them
+   
+   >>>  cat["non/existing.file"].run(retcode=None)
+   (1, u'', u'/bin/cat: non/existing.file: No such file or directory\n')
+
+   
+
+
+If you need the value of the exit code, there are two ways to do it. You can call ``.run(retcode=None)``
+(or any other valid retcode value) on a command, you will get a tuple ``(retcode, stdin, stdout)`` (see
+`Run and Popen`_. If you just need the recode, or want to check the retcode, there are two special
+objects that can be applied to your command to run it and get or test the retcode. For example::
+
+    >>> cat["non/existing.file"] & RETCODE
+    1
+    >>> cat["non/existing.file"] & TF
+    False
+    >>> cat["non/existing.file"] & TF(1)
+    True
+
+.. note::
+   If you want to run these commands in the foreground (see `Background and Foreground`_), you can give
+   ``FG=True`` to ``TF`` or ``RETCODE``.
+   For instance, ``cat["non/existing.file"] & TF(1,FG=True)``
+
+.. versionadded:: 1.5.0
 
 Run and Popen
 -------------
@@ -148,6 +197,8 @@ finish), you can use the ``popen`` method, which returns a normal ``subprocess.P
     ('.\n..\n.git\n.gitignore\n.project\n.pydevproject\nREADME.rst\nplumbum\n[...]', '')
 
 You can read from its ``stdout``, ``wait()`` for it, ``terminate()`` it, etc.
+
+.. _guide-local-commands-bgfg:
 
 Background and Foreground
 -------------------------
@@ -181,6 +232,8 @@ or input from the user. ::
     >>> f.stdout
     '.\n..\n.git\n.gitignore\n.project\n.pydevproject\nREADME.rst\nplumbum\n[...]'
 
+.. _guide-local-commands-nesting:
+    
 Command Nesting
 ---------------
 The arguments of commands can be strings (or any object that can meaningfully-convert to a string), 

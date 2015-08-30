@@ -1,14 +1,30 @@
-1.4.3
+1.6.0 (In development)
+----------------------
+* Colors: Added colors module, support for colors added to cli (`#213 <https://github.com/tomerfiliba/plumbum/pull/213>`_)
+* Machines: Added ``.get()`` method for checking several commands. (`#205 <https://github.com/tomerfiliba/plumbum/pull/205>`_)
+* Machines: ``local.cwd`` now is the current directory even if you change the directory with non-Plumbum methods. (`#207 <https://github.com/tomerfiliba/plumbum/pull/207>`_) 
+* Remote machines: Better error message for SSH (`#211 <https://github.com/tomerfiliba/plumbum/pull/211>`_)
+* Continued to clean out Python 2.5 hacks
+
+1.5.0
 -----
+* Removed support for Python 2.5. (Travis CI does not support it anymore)
 * CLI: add ``invoke``, which allows you to programmatically run applications (`#149 <https://github.com/tomerfiliba/plumbum/pull/149>`_)
 * CLI: add ``--help-all`` and various cosmetic fixes: (`#125 <https://github.com/tomerfiliba/plumbum/pull/125>`_),
   (`#126 <https://github.com/tomerfiliba/plumbum/pull/126>`_), (`#127 <https://github.com/tomerfiliba/plumbum/pull/127>`_)
 * CLI: add ``root_app`` property (`#141 <https://github.com/tomerfiliba/plumbum/pull/141>`_)
 * Machines: ``getattr`` now raises ``AttributeError`` instead of `CommandNotFound` (`#135 <https://github.com/tomerfiliba/plumbum/pull/135>`_)
+* Paramiko: ``keep_alive`` support (`#186 <https://github.com/tomerfiliba/plumbum/pull/186>`_)
+* Paramiko: does not support piping explicitly now (`#160 <https://github.com/tomerfiliba/plumbum/pull/160>`_)
+* Parmaiko: Added pure SFTP backend, gives STFP v4+ support (`#188 <https://github.com/tomerfiliba/plumbum/pull/188>`_)
 * Paths: bugfix to ``cwd`` interaction with ``Path`` (`#142 <https://github.com/tomerfiliba/plumbum/pull/142>`_)
 * Paths: read/write now accept an optional encoding parameter (`#148 <https://github.com/tomerfiliba/plumbum/pull/148>`_)
+* Paths: Suffix support similar to the Python 3.4 standard library ``pathlib`` (`#198 <https://github.com/tomerfiliba/plumbum/pull/198>`_)
 * Commands: renamed ``setenv`` to ``with_env`` (`#143 <https://github.com/tomerfiliba/plumbum/pull/143>`_)
 * Commands: pipelines will now fail with ``ProcessExecutionError`` if the source process fails (`#145 <https://github.com/tomerfiliba/plumbum/pull/145>`_)
+* Commands: added ``TF`` and ``RETCODE`` modifiers (`#202 <https://github.com/tomerfiliba/plumbum/pull/202>`_)
+* Experimental concurrent machine support in ``experimental/parallel.py``
+* Several minor bug fixes, including Windows and Python 3 fixes (`#199 <https://github.com/tomerfiliba/plumbum/pull/199>`_,  `#195 <https://github.com/tomerfiliba/plumbum/pull/195>`_)
 
 1.4.2
 -----
@@ -84,23 +100,23 @@
 1.1
 ---
 * `Paramiko <http://pypi.python.org/pypi/paramiko/1.8.0>`_ integration 
-  `#10 <https://github.com/tomerfiliba/plumbum/issues/10>`_
+  (`#10 <https://github.com/tomerfiliba/plumbum/issues/10>`_)
 * CLI: now with built-in support for `sub-commands <http://plumbum.readthedocs.org/en/latest/cli.html#sub-commands>`_.
   See also: `#43 <https://github.com/tomerfiliba/plumbum/issues/43>`_
 * The "import hack" has moved to the package's ``__init__.py``, to make it importable directly
-  `#45 <https://github.com/tomerfiliba/plumbum/issues/45>`_
-* Paths now support ``chmod`` (on POSIX platform) `#49 <https://github.com/tomerfiliba/plumbum/pull/49>`_
+  (`#45 <https://github.com/tomerfiliba/plumbum/issues/45>`_)
+* Paths now support ``chmod`` (on POSIX platform) (`#49 <https://github.com/tomerfiliba/plumbum/pull/49>`_)
 * The argument name of a ``SwitchAttr`` can now be given to it (defaults to ``VALUE``) 
-  `#46 <https://github.com/tomerfiliba/plumbum/pull/46>`_
+  (`#46 <https://github.com/tomerfiliba/plumbum/pull/46>`_)
 
 1.0.1
 -----
 * Windows: path are no longer converted to lower-case, but ``__eq__`` and ``__hash__`` operate on
-  the lower-cased result `#38 <https://github.com/tomerfiliba/plumbum/issues/38>`_
-* Properly handle empty strings in the argument list `#41 <https://github.com/tomerfiliba/plumbum/issues/41>`_
-* Relaxed type-checking of ``LocalPath`` and ``RemotePath`` `#35 <https://github.com/tomerfiliba/plumbum/issues/35>`_
+  the lower-cased result (`#38 <https://github.com/tomerfiliba/plumbum/issues/38>`_)
+* Properly handle empty strings in the argument list (`#41 <https://github.com/tomerfiliba/plumbum/issues/41>`_)
+* Relaxed type-checking of ``LocalPath`` and ``RemotePath`` (`#35 <https://github.com/tomerfiliba/plumbum/issues/35>`_)
 * Added ``PuttyMachine`` for Windows users that relies on ``plink`` and ``pscp`` 
-  (instead of ``ssh`` and ``scp``) `#37 <https://github.com/tomerfiliba/plumbum/issues/37>`_
+  (instead of ``ssh`` and ``scp``) `(#37 <https://github.com/tomerfiliba/plumbum/issues/37>`_)
 
 1.0.0
 -----

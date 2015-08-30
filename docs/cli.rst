@@ -74,6 +74,25 @@ class-level attributes, such as ``PROGNAME``, ``VERSION`` and ``DESCRIPTION``. F
         PROGNAME = "Foobar"
         VERSION = "7.3"
 
+Colors
+^^^^^^
+        
+Colors are supported through the class level attributes
+``COLOR_PROGNAME``,
+``COLOR_DISCRIPTION``,
+``COLOR_VERSION``,
+``COLOR_HEADING``,
+``COLOR_USAGE``,
+``COLOR_SUBCOMMANDS``,
+``COLOR_GROUPS[]``, and
+``COLOR_GROUPS_BODY[]``,
+which should contain anything that is valid to pass to ``plumbum.colors`` (Styles, ansi color sequences,
+color strings). The dictionaries support custom colors
+for named groups. The default is ``colors.do_nothing``, but if you just want more
+colorful defaults, subclass ``cli.ColorfulApplication``.
+
+.. versionadded:: 1.6
+
 Switch Functions
 ----------------
 The decorator :func:`switch <plumbum.cli.switch>` can be seen as the "heart and soul" of the 
@@ -121,7 +140,7 @@ As demonstrated in the example above, switch functions may take no arguments (no
 specify the argument's *type*. If you require no special validation, simply pass ``str``; 
 otherwise, you may pass any type (or any callable, in fact) that will take a string and convert 
 it to a meaningful object. If conversion is not possible, the type (or callable) is expected to
-raise either ``TypeError` or ``ValueError``.
+raise either ``TypeError`` or ``ValueError``.
 
 For instance ::
 
@@ -442,6 +461,7 @@ Here's an example of running this application::
     
     $ python geet.py commit -m "foo"
     committing...
+
 
 
 See Also

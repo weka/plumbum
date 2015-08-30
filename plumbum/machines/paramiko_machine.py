@@ -1,15 +1,14 @@
 import logging
 import errno
+import stat
 import socket
 import threading
 from plumbum.machines.remote import BaseRemoteMachine
 from plumbum.machines.session import ShellSession
 from plumbum.lib import _setdoc, six
 from plumbum.path.local import LocalPath
-from plumbum.path.remote import RemotePath
 from plumbum.commands.processes import iter_lines, ProcessLineTimedOut
-
-
+from plumbum.path.remote import RemotePath, StatRes
 try:
     # Sigh... we need to gracefully-import paramiko for Sphinx builds, etc
     import paramiko
@@ -170,7 +169,7 @@ class ParamikoMachine(BaseRemoteMachine):
 
     def __init__(self, host, user = None, port = None, password = None, pkey = None, keyfile = None,
             load_system_host_keys = True, missing_host_policy = None, encoding = "utf8",
-            look_for_keys = None, connect_timeout = None, tcp_keepalive = False):
+            look_for_keys = None, connect_timeout = None, tcp_keepalive = False, keep_alive=0):
         self.host = host
         kwargs = {'hostname': host}
         if user:
@@ -211,6 +210,7 @@ class ParamikoMachine(BaseRemoteMachine):
         self._make_socket = make_socket
         self._connection_lock = threading.RLock()
         self._connected = False
+        self._keep_alive = keep_alive
         self._sftp = None
         self._client  # make it connect
         BaseRemoteMachine.__init__(self, encoding, connect_timeout)
@@ -251,7 +251,9 @@ class ParamikoMachine(BaseRemoteMachine):
     @_setdoc(BaseRemoteMachine)
     def session(self, isatty = False, term = "vt100", width = 80, height = 24, new_session = False):
         # new_session is ignored for ParamikoMachine
-        chan = self._client.get_transport().open_session()
+        trans = self._client.get_transport()
+        trans.set_keepalive(self._keep_alive)
+        chan = trans.open_session()
         if isatty:
             chan.get_pty(term, width, height)
             chan.set_combine_stderr()
@@ -340,7 +342,9 @@ class ParamikoMachine(BaseRemoteMachine):
         if ipv6 and dhost == "localhost":
             dhost = "::1"
         srcaddr = ("::1", 0, 0, 0) if ipv6 else ("127.0.0.1", 0)
-        chan = self._client.get_transport().open_channel('direct-tcpip', (dhost, dport), srcaddr)
+        trans = self._client.get_transport()
+        trans.set_keepalive(self._keep_alive)
+        chan = trans.open_channel('direct-tcpip', (dhost, dport), srcaddr)
         return SocketCompatibleChannel(chan)
 
     #
@@ -360,6 +364,21 @@ class ParamikoMachine(BaseRemoteMachine):
         f = self.sftp.open(str(fn), 'wb')
         f.write(data)
         f.close()
+    def _path_stat(self, fn):
+        try:
+            st = self.sftp.stat(str(fn))
+        except IOError as e:
+            if e.errno == errno.ENOENT:
+                return None
+            raise OSError(e.errno)
+        res = StatRes((st.st_mode, 0, 0, 0, st.st_uid, st.st_gid,
+                       st.st_size, st.st_atime, st.st_mtime, 0))
+
+        if stat.S_ISDIR(st.st_mode):
+            res.text_mode = 'directory'
+        if stat.S_ISREG(st.st_mode):
+            res.text_mode = 'regular file'
+        return res
 
 
 

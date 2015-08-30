@@ -1,4 +1,3 @@
-from __future__ import with_statement
 import os
 import sys
 import subprocess
@@ -13,9 +12,10 @@ from contextlib import contextmanager
 from plumbum.path.remote import RemotePath
 from plumbum.commands import CommandNotFound, ConcreteCommand
 from plumbum.machines.session import ShellSession
-from plumbum.lib import ProcInfo, IS_WIN32, six
+from plumbum.lib import ProcInfo, IS_WIN32, six, StaticProperty
 from plumbum.commands.daemons import win32_daemonize, posix_daemonize
 from plumbum.commands.processes import iter_lines
+from plumbum.machines.base import BaseMachine
 from plumbum.machines.env import BaseEnv
 
 if sys.version_info >= (3, 2):
@@ -148,8 +148,10 @@ class LocalMachine(CommandsProvider):
     * ``env`` - the local environment
     * ``encoding`` - the local machine's default encoding (``sys.getfilesystemencoding()``)
     """
-    cwd = LocalWorkdir()
+
+    cwd = StaticProperty(LocalWorkdir)
     env = LocalEnv()
+
     encoding = sys.getfilesystemencoding()
     uname = platform.uname()[0]
 
@@ -218,6 +220,7 @@ class LocalMachine(CommandsProvider):
 
             ls = local["ls"]
         """
+
         if isinstance(cmd, LocalPath):
             return LocalCommand(cmd)
         elif not isinstance(cmd, RemotePath):
@@ -229,17 +232,6 @@ class LocalMachine(CommandsProvider):
                 return LocalCommand(self.which(cmd))
         else:
             raise TypeError("cmd must not be a RemotePath: %r" % (cmd,))
-
-    def __contains__(self, cmd):
-        """Tests for the existance of the command, e.g., ``"ls" in plumbum.local``.
-        ``cmd`` can be anything acceptable by ``__getitem__``.
-        """
-        try:
-            self[cmd]
-        except CommandNotFound:
-            return False
-        else:
-            return True
 
     def _popen(self, executable, argv, stdin = PIPE, stdout = PIPE, stderr = PIPE,
             cwd = None, env = None, new_session = False, ignore_user_stack=False, **kwargs):
