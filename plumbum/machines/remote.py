@@ -216,6 +216,18 @@ class BaseRemoteMachine(CommandsProvider):
 
         raise CommandNotFound(progname, self.env.path, self)
 
+    def __contains__(self, cmd):
+        """Tests for the existance of the command, e.g., ``"ls" in remote_machine``.
+        ``cmd`` can be anything acceptable by ``__getitem__``.
+        """
+        try:
+            self[cmd]
+        except CommandNotFound:
+            return False
+        else:
+            return True
+
+
     def __getitem__(self, cmd):
         """Returns a `Command` object representing the given program. ``cmd`` can be a string or
         a :class:`RemotePath <plumbum.path.remote.RemotePath>`; if it is a path, a command
