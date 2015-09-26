@@ -415,6 +415,7 @@ class Application(object):
             argv = sys.argv
         argv = list(argv)
         inst = cls(argv.pop(0))
+        inst._raw_args = argv[:]
         retcode = 0
         try:
             swfuncs, tailargs = inst._parse_args(argv)
