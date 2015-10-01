@@ -393,9 +393,23 @@ class Application(object):
             raise PositionalArgumentsError("Expected at most %d positional arguments, got %r" %
                 (max_args, tailargs))
 
-        ordered = [(f, a) for _, f, a in
-            sorted([(sf.index, f, sf.val) for f, sf in swfuncs.items()])]
+        ordered = [(f, n, a) for _, f, n, a in
+            sorted([(sf.index, f, sf.swname, sf.val) for f, sf in swfuncs.items()])]
         return ordered, tailargs
+
+    def reformulate(self, exclude=None):
+        ordered, tailargs = self._parsed_args
+        exclude = set(n.lstrip("-") for n in exclude) if exclude else ()
+        switches = []
+        for sw, name, val in ordered:
+            if name.lstrip("-") in exclude:
+                continue
+            if not val:
+                switches.append(name)
+            else:
+                for v in val:
+                    switches.extend((name, v))
+        return tuple(switches), tuple(tailargs)
 
     @classmethod
     def run(cls, argv = None, exit = True):  # @ReservedAssignment
@@ -419,7 +433,7 @@ class Application(object):
         retcode = 0
         try:
             swfuncs, tailargs = inst._parse_args(argv)
-            ordered, tailargs = inst._validate_args(swfuncs, tailargs)
+            inst._parsed_args = ordered, tailargs = inst._validate_args(swfuncs, tailargs)
         except ShowHelp:
             inst.help()
         except ShowHelpAll:
@@ -433,7 +447,7 @@ class Application(object):
             inst.help()
             retcode = 2
         else:
-            for f, a in ordered:
+            for f, _, a in ordered:
                 f(inst, *a)
 
             cleanup = None
@@ -486,7 +500,7 @@ class Application(object):
             swfuncs[swinfo.func] = SwitchParseInfo(swname, p, index)
 
         ordered, tailargs = inst._validate_args(swfuncs, args)
-        for f, a in ordered:
+        for f, _, a in ordered:
             f(inst, *a)
 
         cleanup = None
