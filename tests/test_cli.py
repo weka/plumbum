@@ -1,32 +1,11 @@
-import sys
 import unittest
-from contextlib import contextmanager
+import time
 
 from plumbum import cli, local
-from plumbum.cli.terminal import ask, choose, hexdump
-from plumbum.lib import six
+from plumbum.cli.terminal import ask, choose, hexdump, Progress
+from plumbum.lib import captured_stdout
 
-# string/unicode issues
-if six.PY3:
-    from io import StringIO
-else:
-    from StringIO import StringIO
-
-
-@contextmanager
-def captured_stdout(stdin = ""):
-    prevstdin = sys.stdin
-    prevstdout = sys.stdout
-    sys.stdin = StringIO(six.u(stdin))
-    sys.stdout = StringIO()
-    try:
-        yield sys.stdout
-    finally:
-        sys.stdin = prevstdin
-        sys.stdout = prevstdout
-
-
-class TestApp(cli.Application):
+class SimpleApp(cli.Application):
     @cli.switch(["a"])
     def spam(self):
         print("!!a")
@@ -48,6 +27,8 @@ class TestApp(cli.Application):
         self.eggs = old
         self.tailargs = args
 
+
+
 class Geet(cli.Application):
     debug = cli.Flag("--debug")
     cleanups = []
@@ -59,10 +40,12 @@ class Geet(cli.Application):
         self.cleanups.append(1)
         print("geet cleaning up with rc = %s" % (retcode,))
 
+@Geet.subcommand("add")
 class GeetAdd(cli.Application):
     def main(self, *files):
         return "adding", files
 
+@Geet.subcommand("commit")
 class GeetCommit(cli.Application):
     message = cli.Flag("-m", str)
 
@@ -75,10 +58,6 @@ class GeetCommit(cli.Application):
     def cleanup(self, retcode):
         self.parent.cleanups.append(2)
         print("geet commit cleaning up with rc = %s" % (retcode,))
-
-# python 2.5 compatibility (otherwise, could be used as a decorator)
-Geet.subcommand("add", GeetAdd)
-Geet.subcommand("commit", GeetCommit)
 
 class Sample(cli.Application):
     foo = cli.SwitchAttr("--foo")
@@ -111,25 +90,25 @@ if not hasattr(unittest.TestCase, "assertIn"):
 
 class CLITest(unittest.TestCase):
     def test_meta_switches(self):
-        _, rc = TestApp.run(["foo", "-h"], exit = False)
+        _, rc = SimpleApp.run(["foo", "-h"], exit = False)
         self.assertEqual(rc, 0)
-        _, rc = TestApp.run(["foo", "--version"], exit = False)
+        _, rc = SimpleApp.run(["foo", "--version"], exit = False)
         self.assertEqual(rc, 0)
 
     def test_okay(self):
-        _, rc = TestApp.run(["foo", "--bacon=81"], exit = False)
+        _, rc = SimpleApp.run(["foo", "--bacon=81"], exit = False)
         self.assertEqual(rc, 0)
 
-        inst, rc = TestApp.run(["foo", "--bacon=81", "-a", "-v", "-e", "7", "-vv",
+        inst, rc = SimpleApp.run(["foo", "--bacon=81", "-a", "-v", "-e", "7", "-vv",
             "--", "lala", "-e", "7"], exit = False)
         self.assertEqual(rc, 0)
         self.assertEqual(inst.eggs, "7")
 
     def test_failures(self):
-        _, rc = TestApp.run(["foo"], exit = False)
+        _, rc = SimpleApp.run(["foo"], exit = False)
         self.assertEqual(rc, 2)
 
-        _, rc = TestApp.run(["foo", "--bacon=hello"], exit = False)
+        _, rc = SimpleApp.run(["foo", "--bacon=hello"], exit = False)
         self.assertEqual(rc, 2)
 
     def test_subcommands(self):
@@ -184,21 +163,21 @@ class CLITest(unittest.TestCase):
         self.assertIn("hello world", stream.getvalue())
 
     def test_reset_switchattr(self):
-        inst, rc = TestApp.run(["foo", "--bacon=81", "-e", "bar"], exit=False)
+        inst, rc = SimpleApp.run(["foo", "--bacon=81", "-e", "bar"], exit=False)
         self.assertEqual(rc, 0)
         self.assertEqual(inst.eggs, "bar")
 
-        inst, rc = TestApp.run(["foo", "--bacon=81"], exit=False)
+        inst, rc = SimpleApp.run(["foo", "--bacon=81"], exit=False)
         self.assertEqual(rc, 0)
         self.assertEqual(inst.eggs, None)
 
     def test_invoke(self):
-        inst, rc = TestApp.invoke("arg1", "arg2", eggs="sunny", bacon=10, verbose=2)
+        inst, rc = SimpleApp.invoke("arg1", "arg2", eggs="sunny", bacon=10, verbose=2)
         self.assertEqual((inst.eggs, inst.verbose, inst.tailargs), ("sunny", 2, ("arg1", "arg2")))
 
     def test_env_var(self):
         with captured_stdout() as stream:
-            _, rc = TestApp.run(["arg", "--bacon=10"], exit=False)
+            _, rc = SimpleApp.run(["arg", "--bacon=10"], exit=False)
             self.assertEqual(rc, 0)
             self.assertIn("10", stream.getvalue())
 
@@ -207,7 +186,7 @@ class CLITest(unittest.TestCase):
                 PLUMBUM_TEST_BACON='20',
                 PLUMBUM_TEST_EGGS='raw',
             ):
-                inst, rc = TestApp.run(["arg"], exit=False)
+                inst, rc = SimpleApp.run(["arg"], exit=False)
 
             self.assertEqual(rc, 0)
             self.assertIn("20", stream.getvalue())
@@ -215,7 +194,7 @@ class CLITest(unittest.TestCase):
 
     def test_mandatory_env_var(self):
         with captured_stdout() as stream:
-            _, rc = TestApp.run(["arg"], exit = False)
+            _, rc = SimpleApp.run(["arg"], exit = False)
             self.assertEqual(rc, 2)
             self.assertIn("bacon is mandatory", stream.getvalue())
 
@@ -250,6 +229,28 @@ class TestTerminal(unittest.TestCase):
 *
 000060 | 41 41 41 41 66 6f 6f 20 62 61 72                | AAAAfoo bar"""
         self.assertEqual("\n".join(hexdump(data)), output)
+
+    def test_progress(self):
+        with captured_stdout() as stream:
+            for i in Progress.range(4, has_output=True, timer=False):
+                print('hi')
+                time.sleep(.5)
+            stream.seek(0)
+            output = """\
+0% complete
+0% complete
+hi
+25% complete
+hi
+50% complete
+hi
+75% complete
+hi
+100% complete
+
+"""
+            self.assertEqual(stream.read(), output)
+
 
 
 if __name__ == "__main__":

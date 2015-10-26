@@ -1,9 +1,13 @@
 import sys
+from contextlib import contextmanager
 from abc import ABCMeta
+import inspect
 
 IS_WIN32 = (sys.platform == "win32")
 
 def _setdoc(super):  # @ReservedAssignment
+    """This inherits the docs on the current class. Not really needed for Python 3.5,
+    due to new behavoir of inspect.getdoc, but still doesn't hurt."""
     def deco(func):
         func.__doc__ = getattr(getattr(super, func.__name__, None), "__doc__", None)
         return func
@@ -23,7 +27,13 @@ class six(object):
     A light-weight version of six (which works on IronPython)
     """
     PY3 = sys.version_info[0] >= 3
-    ABC = ABCMeta('ABC', (object,), {'__module__':__name__})
+    ABC = ABCMeta('ABC', (object,), {'__module__':__name__, '__slots__':()})
+
+    # Be sure to use named-tuple access, so that usage is not affected
+    try:
+        getfullargspec = staticmethod(inspect.getfullargspec)
+    except AttributeError:
+        getfullargspec = staticmethod(inspect.getargspec) # extra fields will not be available
 
     if PY3:
         integer_types = (int,)
@@ -60,6 +70,29 @@ class six(object):
         def get_method_function(m):
             return m.im_func
 
+# Try/except fails because io has the wrong StringIO in Python2
+# You'll get str/unicode errors
+if six.PY3:
+    from io import StringIO
+else:
+    from StringIO import StringIO
+
+
+@contextmanager
+def captured_stdout(stdin = ""):
+    """
+    Captures stdout (similar to the redirect_stdout in Python 3.4+, but with slightly different arguments)
+    """
+    prevstdin = sys.stdin
+    prevstdout = sys.stdout
+    sys.stdin = StringIO(six.u(stdin))
+    sys.stdout = StringIO()
+    try:
+        yield sys.stdout
+    finally:
+        sys.stdin = prevstdin
+        sys.stdout = prevstdout
+
 class StaticProperty(object):
     """This acts like a static property, allowing access via class or object.
     This is a non-data descriptor."""
@@ -69,4 +102,18 @@ class StaticProperty(object):
 
     def __get__(self, obj, klass=None):
         return self._function()
+
+
+def getdoc(object):
+    """
+    This gets a docstring if avaiable, and cleans it, but does not look up docs in
+    inheritance tree (Pre 3.5 behavior of ``inspect.getdoc``).
+    """
+    try:
+        doc = object.__doc__
+    except AttributeError:
+        return None
+    if not isinstance(doc, str):
+        return None
+    return inspect.cleandoc(doc)
 

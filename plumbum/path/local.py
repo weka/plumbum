@@ -21,6 +21,14 @@ except ImportError:
     def getgrnam(x):
         raise OSError("`getgrnam` not supported")
 
+try: # Py3
+    import urllib.parse as urlparse
+    import urllib.request as urllib 
+except ImportError:
+    import urlparse
+    import urllib
+
+
 logger = logging.getLogger("plumbum.local")
 
 
@@ -30,23 +38,23 @@ logger = logging.getLogger("plumbum.local")
 class LocalPath(Path):
     """The class implementing local-machine paths"""
 
-    __slots__ = ["_path"]
     CASE_SENSITIVE = not IS_WIN32
 
-    def __init__(self, *parts):
-        if not parts:
-            raise TypeError("At least one path part is require (none given)")
-        if any(isinstance(path, RemotePath) for path in parts):
-            raise TypeError("LocalPath cannot be constructed from %r" % (parts,))
-        self._path = os.path.normpath(os.path.join(*(str(p) for p in parts)))
     def __new__(cls, *parts):
         if len(parts) == 1 and \
                 isinstance(parts[0], cls) and \
                 not isinstance(parts[0], LocalWorkdir):
             return parts[0]
-        return object.__new__(cls)
-    def __str__(self):
-        return self._path
+        if not parts:
+            raise TypeError("At least one path part is require (none given)")
+        if any(isinstance(path, RemotePath) for path in parts):
+            raise TypeError("LocalPath cannot be constructed from %r" % (parts,))
+        self = super(LocalPath, cls).__new__(cls, os.path.normpath(os.path.join(*(str(p) for p in parts))))
+        return self
+    @property
+    def _path(self):
+        return str(self)
+
     def _get_info(self):
         return self._path
     def __getstate__(self):
@@ -57,7 +65,7 @@ class LocalPath(Path):
 
     @property
     @_setdoc(Path)
-    def basename(self):
+    def name(self):
         return os.path.basename(str(self))
 
     @property
@@ -102,17 +110,24 @@ class LocalPath(Path):
     @_setdoc(Path)
     def list(self):
         return [self / fn for fn in os.listdir(str(self))]
+        
+    @_setdoc(Path)
+    def iterdir(self):
+        try:
+            return (self.__class__(fn.name) for fn in os.scandir(str(self)))
+        except NameError:
+            return (self / fn for fn in os.listdir(str(self)))
 
     @_setdoc(Path)
-    def isdir(self):
+    def is_dir(self):
         return os.path.isdir(str(self))
 
     @_setdoc(Path)
-    def isfile(self):
+    def is_file(self):
         return os.path.isfile(str(self))
 
     @_setdoc(Path)
-    def islink(self):
+    def is_symlink(self):
         return os.path.islink(str(self))
 
     @_setdoc(Path)
@@ -127,11 +142,16 @@ class LocalPath(Path):
     def with_name(self, name):
         return LocalPath(self.dirname) / name
 
+    @property
+    @_setdoc(Path)
+    def stem(self):
+        return self.name.rsplit(os.path.extsep)[0]
+
     @_setdoc(Path)
     def with_suffix(self, suffix, depth=1):
         if (suffix and not suffix.startswith(os.path.extsep) or suffix == os.path.extsep):
             raise ValueError("Invalid suffix %r" % (suffix))
-        name = self.basename
+        name = self.name
         depth = len(self.suffixes) if depth is None else min(depth, len(self.suffixes))
         for i in range(depth):
             name, ext = os.path.splitext(name)
@@ -139,13 +159,14 @@ class LocalPath(Path):
 
     @_setdoc(Path)
     def glob(self, pattern):
-        return [LocalPath(fn) for fn in glob.glob(str(self / pattern))]
+        fn = lambda pat: [LocalPath(m) for m in glob.glob(str(self / pat))]
+        return self._glob(pattern, fn) 
 
     @_setdoc(Path)
     def delete(self):
         if not self.exists():
             return
-        if self.isdir():
+        if self.is_dir():
             shutil.rmtree(str(self))
         else:
             try:
@@ -170,7 +191,7 @@ class LocalPath(Path):
         dst = LocalPath(dst)
         if override:
             dst.delete()
-        if self.isdir():
+        if self.is_dir():
             shutil.copytree(str(self), str(dst))
         else:
             dst_dir = LocalPath(dst).dirname
@@ -216,7 +237,7 @@ class LocalPath(Path):
         uid = self.uid if owner is None else (owner if isinstance(owner, int) else getpwnam(owner)[2])
         gid = self.gid if group is None else (group if isinstance(group, int) else getgrnam(group)[2])
         os.chown(str(self), uid, gid)
-        if recursive or (recursive is None and self.isdir()):
+        if recursive or (recursive is None and self.is_dir()):
             for subpath in self.walk():
                 os.chown(str(subpath), uid, gid)
 
@@ -239,7 +260,7 @@ class LocalPath(Path):
         else:
             from plumbum.machines.local import local
             # windows: use mklink
-            if self.isdir():
+            if self.is_dir():
                 local["cmd"]("/C", "mklink", "/D", "/H", str(dst), str(self))
             else:
                 local["cmd"]("/C", "mklink", "/H", str(dst), str(self))
@@ -253,7 +274,7 @@ class LocalPath(Path):
         else:
             from plumbum.machines.local import local
             # windows: use mklink
-            if self.isdir():
+            if self.is_dir():
                 local["cmd"]("/C", "mklink", "/D", str(dst), str(self))
             else:
                 local["cmd"]("/C", "mklink", str(dst), str(self))
@@ -261,7 +282,7 @@ class LocalPath(Path):
     @_setdoc(Path)
     def unlink(self):
         try:
-            if hasattr(os, "symlink") or not self.isdir():
+            if hasattr(os, "symlink") or not self.is_dir():
                 os.unlink(str(self))
             else:
                 # windows: use rmdir for directories and directory symlinks
@@ -277,16 +298,29 @@ class LocalPath(Path):
         with self.open("r+b") as f:
             os.ftruncate(f.fileno(), size)
 
+    @_setdoc(Path)
+    def as_uri(self, scheme='file'):
+        return urlparse.urljoin(str(scheme)+':', urllib.pathname2url(str(self)))
+
+    @property
+    @_setdoc(Path)
+    def drive(self):
+        return os.path.splitdrive(str(self))[0]
+
+    @property
+    @_setdoc(Path)
+    def root(self):
+        return os.path.sep
+
+
 class LocalWorkdir(LocalPath):
     """Working directory manipulator"""
 
-    __slots__ = []
-    def __init__(self):
-        LocalPath.__init__(self, os.getcwd())
+
     def __hash__(self):
         raise TypeError("unhashable type")
     def __new__(cls):
-        return object.__new__(cls)
+        return super(LocalWorkdir, cls).__new__(cls, os.getcwd())
 
     def chdir(self, newdir):
         """Changes the current working directory to the given one
@@ -297,7 +331,7 @@ class LocalWorkdir(LocalPath):
             raise TypeError("newdir cannot be %r" % (newdir,))
         logger.debug("Chdir to %s", newdir)
         os.chdir(str(newdir))
-        self._path = os.path.normpath(os.getcwd())
+        return self.__class__()
     def getpath(self):
         """Returns the current working directory as a ``LocalPath`` object"""
         return LocalPath(self._path)
@@ -309,10 +343,9 @@ class LocalWorkdir(LocalPath):
         :param newdir: The destination director (a string or a ``LocalPath``)
         """
         prev = self._path
-        self.chdir(newdir)
+        newdir = self.chdir(newdir)
         try:
-            yield
+            yield newdir 
         finally:
             self.chdir(prev)
-
 

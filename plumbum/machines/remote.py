@@ -113,6 +113,9 @@ class RemoteCommand(ConcreteCommand):
         return "RemoteCommand(%r, %r)" % (self.remote, self.executable)
     def popen(self, args = (), **kwargs):
         return self.remote.popen(self[args], **kwargs)
+    def nohup(self, cwd='.', stdout='nohup.out', stderr=None, append=True):
+        """Runs a command detached."""
+        return machine.nohup(self, cwd, stdout, stderr, append)
 
 class ClosedRemoteMachine(Exception):
     pass
@@ -142,7 +145,10 @@ class BaseRemoteMachine(CommandsProvider):
 
     # allow inheritors to override the RemoteCommand class
     RemoteCommand = RemoteCommand
-
+    
+    @property
+    def cwd(self):
+        return RemoteWorkdir(self)
 
     def __init__(self, encoding = "utf8", connect_timeout = 10, new_session = False):
         self._as_user_stack = []
@@ -150,7 +156,6 @@ class BaseRemoteMachine(CommandsProvider):
         self.connect_timeout = connect_timeout
         self._session = self.session(new_session = new_session)
         self.uname = self._get_uname()
-        self.cwd = RemoteWorkdir(self)
         self.env = RemoteEnv(self)
         self._python = None
 
@@ -211,7 +216,7 @@ class BaseRemoteMachine(CommandsProvider):
         for name in alternatives:
             for p in self.env.path:
                 fn = p / name
-                if fn.access("x"):
+                if fn.access("x") and not fn.is_dir():
                     return fn
 
         raise CommandNotFound(progname, self.env.path, self)
@@ -358,13 +363,13 @@ class BaseRemoteMachine(CommandsProvider):
         return matches
 
     def _path_getuid(self, fn):
-        stat_cmd = "stat -c '%u,%U' " if self.uname != 'Darwin' else "stat -f '%u,%Su' "
+        stat_cmd = "stat -c '%u,%U' " if self.uname not in ('Darwin', 'FreeBSD') else "stat -f '%u,%Su' "
         return self._session.run(stat_cmd + shquote(fn))[1].strip().split(",")
     def _path_getgid(self, fn):
-        stat_cmd = "stat -c '%g,%G' " if self.uname != 'Darwin' else "stat -f '%g,%Sg' "
+        stat_cmd = "stat -c '%g,%G' " if self.uname not in ('Darwin', 'FreeBSD') else "stat -f '%g,%Sg' "
         return self._session.run(stat_cmd + shquote(fn))[1].strip().split(",")
     def _path_stat(self, fn):
-        if self.uname != 'Darwin':
+        if self.uname not in ('Darwin', 'FreeBSD'):
             stat_cmd = "stat -c '%F,%f,%i,%d,%h,%u,%g,%s,%X,%Y,%Z' "
         else:
             stat_cmd = "stat -f '%HT,%Xp,%i,%d,%l,%u,%g,%z,%a,%m,%c' "

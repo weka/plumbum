@@ -120,8 +120,6 @@ class LocalCommand(ConcreteCommand):
     def __init__(self, executable, encoding = "auto"):
         ConcreteCommand.__init__(self, executable,
             local.encoding if encoding == "auto" else encoding)
-    def __repr__(self):
-        return "LocalCommand(%r)" % (self.executable,)
 
     @property
     def machine(self):
@@ -130,7 +128,7 @@ class LocalCommand(ConcreteCommand):
     def popen(self, args = (), cwd = None, env = None, **kwargs):
         if isinstance(args, six.string_types):
             args = (args,)
-        return local._popen(self.executable, self.formulate(0, args),
+        return self.machine._popen(self.executable, self.formulate(0, args),
             cwd = self.cwd if cwd is None else cwd, env = self.env if env is None else env,
             **kwargs)
 
@@ -167,7 +165,7 @@ class LocalMachine(CommandsProvider):
             for p in cls.env.path:
                 for ext in cls._EXTENSIONS:
                     fn = p / (progname + ext)
-                    if fn.access("x"):
+                    if fn.access("x") and not fn.is_dir():
                         return fn
             return None
     else:
@@ -175,7 +173,7 @@ class LocalMachine(CommandsProvider):
         def _which(cls, progname):
             for p in cls.env.path:
                 fn = p / progname
-                if fn.access("x"):
+                if fn.access("x") and not fn.is_dir():
                     return fn
             return None
 
@@ -238,7 +236,7 @@ class LocalMachine(CommandsProvider):
         if new_session:
             if has_new_subprocess:
                 kwargs["start_new_session"] = True
-            elif subprocess.mswindows:
+            elif IS_WIN32:
                 kwargs["creationflags"] = kwargs.get("creationflags", 0) | subprocess.CREATE_NEW_PROCESS_GROUP
             else:
                 def preexec_fn(prev_fn = kwargs.get("preexec_fn", lambda: None)):
@@ -246,7 +244,7 @@ class LocalMachine(CommandsProvider):
                     prev_fn()
                 kwargs["preexec_fn"] = preexec_fn
 
-        if subprocess.mswindows and "startupinfo" not in kwargs and stdin not in (sys.stdin, None):
+        if IS_WIN32 and "startupinfo" not in kwargs and stdin not in (sys.stdin, None):
             from plumbum.machines._windows import get_pe_subsystem, IMAGE_SUBSYSTEM_WINDOWS_CUI
             subsystem = get_pe_subsystem(str(executable))
 
@@ -262,7 +260,7 @@ class LocalMachine(CommandsProvider):
                     sui.wShowWindow = subprocess.SW_HIDE  # @UndefinedVariable
 
         if not has_new_subprocess and "close_fds" not in kwargs:
-            if subprocess.mswindows and (stdin is not None or stdout is not None or stderr is not None):
+            if IS_WIN32 and (stdin is not None or stdout is not None or stderr is not None):
                 # we can't close fds if we're on windows and we want to redirect any std handle
                 kwargs["close_fds"] = False
             else:
@@ -286,7 +284,8 @@ class LocalMachine(CommandsProvider):
         proc.argv = argv
         return proc
 
-    def daemonic_popen(self, command, cwd = "/"):
+
+    def daemonic_popen(self, command, cwd = "/", stdout=None, stderr=None, append=True):
         """
         On POSIX systems:
 
@@ -305,9 +304,9 @@ class LocalMachine(CommandsProvider):
         .. versionadded:: 1.3
         """
         if IS_WIN32:
-            return win32_daemonize(command, cwd)
+            return win32_daemonize(command, cwd, stdout, stderr, append)
         else:
-            return posix_daemonize(command, cwd)
+            return posix_daemonize(command, cwd, stdout, stderr, append)
 
     if IS_WIN32:
         def list_processes(self, *pids):
@@ -319,9 +318,9 @@ class LocalMachine(CommandsProvider):
             import csv
             pids = set(map(int, pids))
             tasklist = local["tasklist"]
-            lines = tasklist("/V", "/FO", "CSV").encode("utf8").splitlines()
+            lines = tasklist("/V", "/FO", "CSV").splitlines()
             rows = csv.reader(lines)
-            header = rows.next()
+            header = next(rows)
             imgidx = header.index('Image Name')
             pididx = header.index('PID')
             statidx = header.index('Status')
@@ -330,8 +329,8 @@ class LocalMachine(CommandsProvider):
                 pid = int(row[pididx])
                 if pids and pid not in pids:
                     continue
-                yield ProcInfo(pid, row[useridx].decode("utf8"),
-                    row[statidx].decode("utf8"), row[imgidx].decode("utf8"))
+                yield ProcInfo(int(row[pididx]), row[useridx],
+                    row[statidx], row[imgidx])
     else:
         def list_processes(self, *pids):
             """

@@ -127,7 +127,7 @@ class TestANSIColor(unittest.TestCase):
     def testUndoColor(self):
         self.assertEqual('\033[39m', ~colors.fg)
         self.assertEqual('\033[49m', ~colors.bg)
-        self.assertEqual('\033[21m', ~colors.bold)
+        self.assertEqual('\033[22m', ~colors.bold)
         self.assertEqual('\033[22m', ~colors.dim)
         for i in range(7):
             self.assertEqual('\033[39m', ~colors(i))
@@ -162,14 +162,6 @@ class TestANSIColor(unittest.TestCase):
         output = sys.stdout.getvalue().strip()
         self.assertEquals(output,str(colors.blue))
 
-    def testDirectCallArgs(self):
-        colors.blue("This is")
-
-        if not hasattr(sys.stdout, "getvalue"):
-            self.fail("Need to run in buffered mode!")
-
-        output = sys.stdout.getvalue().strip()
-        self.assertEquals(output,str(colors.blue | "This is"))
 
     def testPrint(self):
         colors.yellow.print('This is printed to stdout')

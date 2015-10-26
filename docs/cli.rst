@@ -76,22 +76,41 @@ class-level attributes, such as ``PROGNAME``, ``VERSION`` and ``DESCRIPTION``. F
 
 Colors
 ^^^^^^
-        
-Colors are supported through the class level attributes
-``COLOR_PROGNAME``,
-``COLOR_DISCRIPTION``,
-``COLOR_VERSION``,
-``COLOR_HEADING``,
-``COLOR_USAGE``,
-``COLOR_SUBCOMMANDS``,
-``COLOR_GROUPS[]``, and
-``COLOR_GROUPS_BODY[]``,
-which should contain anything that is valid to pass to ``plumbum.colors`` (Styles, ansi color sequences,
-color strings). The dictionaries support custom colors
-for named groups. The default is ``colors.do_nothing``, but if you just want more
-colorful defaults, subclass ``cli.ColorfulApplication``.
-
 .. versionadded:: 1.6
+       
+Colors are supported. You can use a colored string on ``PROGNAME``, ``VERSION`` and ``DESCRIPTION`` directly.
+If you set ``PROGNAME`` to a color, you can get auto-naming and color.
+The color of the usage string is available as ``COLOR_USAGE``, and the different groups can be colored with a
+dictionary ``COLOR_GROUPS``.
+
+For instance, the following is valid::
+
+    class MyApp(cli.Application):
+        PROGNAME = colors.green
+        VERSION = colors.blue | "1.0.2"
+        COLOR_GROUPS = {"Meta-switches" : colors.bold & colors.yellow}
+        opts =  cli.Flag("--ops", help=colors.magenta | "This is help")
+
+
+
+.. raw:: html
+
+    <pre>
+    <font color="#00C000">SimpleColorCLI.py</font> <font color="#0000C0">1.0.2</font>
+    
+    Usage:
+        <font color="#00C000">SimpleColorCLI.py</font> [SWITCHES] 
+
+    <font color="#C0C000"><b>Meta-switches</b></font>
+        <font color="#C0C000"><b>-h, --help</b></font>         <font color="#C0C000"><b>Prints this help message and quits</b></font>
+        <font color="#C0C000"><b>--help-all</b></font>         <font color="#C0C000"><b>Print help messages of all subcommands and quit</b></font>
+        <font color="#C0C000"><b>-v, --version</b></font>      <font color="#C0C000"><b>Prints the program's version and quits</b></font>
+
+    Switches
+        --ops              <font color="#C000C0">This is help</font>
+    </pre>
+
+
 
 Switch Functions
 ----------------
@@ -303,13 +322,36 @@ if the switch is given) and ``CountingAttr`` (which counts the number of occurre
         enable_logging = cli.Flag("--no-log", default = True)
         verbosity_level = cli.CountingAttr("-v")
         
-        def main(self):
+        def main(selfy):
             print self.log_file, self.enable_logging, self.verbosity_level
 
-::
+.. code-block:: bash
 
     $ ./example.py -v --log-file=log.txt -v --no-log -vvv
     log.txt False 5
+
+
+Environment Variables
+^^^^^^^^^^^^^^^^^^^^^
+.. versionadded:: 1.6
+
+You can also set a ``SwitchAttr`` to take an environment variable as an input using the envname parameter.
+For example::
+
+    class MyApp(cli.Application):
+        log_file = cli.SwitchAttr("--log-file", str, envname="MY_LOG_FILE")
+
+        def main(self):
+            print(self.log_file)
+
+.. code-block:: bash
+
+    $ MY_LOG_FILE=this.log ./example.py
+    this.log
+
+Giving the switch on the command line will override the environment variable value.
+
+    
 
 Main
 ----
@@ -358,7 +400,31 @@ With varargs::
         -h, --help                 Prints this help message and quits
         -v, --version              Prints the program's version and quits
 
+Positional argument validation
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.. versionadded:: 1.6
+
+You can supply positional argument validators using the ``cli.positional`` decorator. Simply
+pass the validators in the decorator matching the names in the main function. For example::
+
+    class MyApp(cli.Application):
+        @positional(cli.ExistingFile, cli.NonexistantPath)
+        def main(self, infile, *outfiles):
+            "infile is a path, outfiles are a list of paths, proper errors are given"
+
+If you only want to run your application in Python 3, you can also use annotations to
+specify the validators. For example::
+
+    class MyApp(cli.Application):
+        def main(self, infile : cli.ExistingFile, *outfiles : cli.NonexistantPath):
+        "Identical to above MyApp"
+
+Annotations are ignored if the positional decorator is present.
+    
+
+
 .. _guide-subcommands:
+
 
 Sub-commands
 ------------
@@ -461,6 +527,26 @@ Here's an example of running this application::
     
     $ python geet.py commit -m "foo"
     committing...
+
+Terminal Utilities
+------------------
+
+Several terminal utilities are available in ``plumbum.cli.terminal`` to assist in making terminal
+applications.
+
+``get_terminal_size(default=(80,25))`` allows cross platform access to the terminal size as a tuple ``(width, height)``.
+Several methods to ask the user for input, such as ``readline``, ``ask``, ``choose``, and ``prompt`` are available.
+
+``Progress(iterator)`` allows you to quickly create a progress bar from an iterator. Simply wrap a slow iterator with this
+and iterate over it, and it will produce a nice text progress bar based on the user's screen width, with estimated time
+remaining displayed. If you need to create a progress bar for a fast iterator but with a loop containing code, use ``Progress.wrap`` or ``Progress.range``. For example::
+
+    for i in Progress.range(10):
+        time.sleep(1)
+
+If you have something that produces output, but still needs a progress bar, pass ``has_output=True`` to force the bar not to try to erase the old one each time.
+
+For the full list of helpers or more information, see the :ref:`api docs <api-cli>`.
 
 
 

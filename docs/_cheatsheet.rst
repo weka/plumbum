@@ -62,7 +62,7 @@ Working-directory manipulation
     ...
     u'15\n'
 
-See :ref:`guide-local-machine`.
+See :ref:`guide-paths` and :ref:`guide-local-machine`.
 
 Foreground and background execution
 -----------------------------------
@@ -154,10 +154,6 @@ See :ref:`guide-cli`.
 
 Colors and Styles
 -----------------
-.. warning::
-
-   This module is not yet in a released version of Plumbum, so the interface
-   may change. See the `discussion <https://github.com/tomerfiliba/plumbum/issues/215>`_ about the default stylesheet!
 
 .. code-block:: python
 

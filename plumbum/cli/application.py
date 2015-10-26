@@ -1,12 +1,11 @@
 from __future__ import division, print_function, absolute_import
 import os
 import sys
-import inspect
 import functools
 from textwrap import TextWrapper
 from collections import defaultdict
 
-from plumbum.lib import six
+from plumbum.lib import six, getdoc
 from plumbum.cli.terminal import get_terminal_size
 from plumbum.cli.switches import (SwitchError, UnknownSwitch, MissingArgument, WrongArgumentType,
     MissingMandatorySwitch, SwitchCombinationError, PositionalArgumentsError, switch,
@@ -84,34 +83,19 @@ class Application(object):
     There are several class-level attributes you may set:
 
     * ``PROGNAME`` - the name of the program; if ``None`` (the default), it is set to the
-      name of the executable (``argv[0]``)
+      name of the executable (``argv[0]``), can be in color. If only a color, will be applied to the name.
 
-    * ``VERSION`` - the program's version (defaults to ``1.0``)
+    * ``VERSION`` - the program's version (defaults to ``1.0``, can be in color)
 
     * ``DESCRIPTION`` - a short description of your program (shown in help). If not set,
-      the class' ``__doc__`` will be used.
+      the class' ``__doc__`` will be used. Can be in color.
 
     * ``USAGE`` - the usage line (shown in help)
 
-    * ``COLOR_PROGNAME`` - the color to print the name in, defaults to None
+    * ``COLOR_USAGE`` - The color of the usage line
 
-    * ``COLOR_PROGNAME`` - the color to print the discription in, defaults to None
-
-    * ``COLOR_VERSION`` - the color to print the version in, defaults to None
-
-    * ``COLOR_HEADING`` - the color for headings, can be an attribute, defaults to None
-
-    * ``COLOR_USAGE`` - the color for usage, defaults to None
-
-    * ``COLOR_SUBCOMMANDS`` - the color for subcommands, defaults to None
-
-    * ``COLOR_SWITCHES`` - the color for switches, defaults to None
-
-    * ``COLOR_METASWITCHES`` - the color for meta switches, defaults to None
-
-    * ``COLOR_GROUPS[]`` - Dictionary for colors for the groups, defaults to empty (no colors)
-
-    * ``COLOR_GROUPS_BODY[]`` - Dictionary for colors for the group bodies, defaults nothing (will default to using COLOR_GROUPS instead)``
+    * ``COLOR_GROUPS`` - A dictionary that sets colors for the groups, like Meta-switches, Switches,
+      and Subcommands
 
     A note on sub-commands: when an application is the root, its ``parent`` attribute is set to
     ``None``. When it is used as a nested-command, ``parent`` will point to be its direct ancestor.
@@ -124,14 +108,8 @@ class Application(object):
     DESCRIPTION = None
     VERSION = None
     USAGE = None
-    COLOR_PROGNAME = None
-    COLOR_DISCRIPTION = None
-    COLOR_VERSION = None
-    COLOR_HEADING = None
     COLOR_USAGE = None
-    COLOR_SUBCOMMANDS = None
-    COLOR_GROUPS = dict()
-    COLOR_GROUPS_BODY = COLOR_GROUPS
+    COLOR_GROUPS = None
     CALL_MAIN_IF_NESTED_COMMAND = True
 
     parent = None
@@ -139,22 +117,21 @@ class Application(object):
     _unbound_switches = ()
 
     def __init__(self, executable):
-        # Convert the colors to plumbum.colors on the instance (class remains the same)
-        for item in ('COLOR_PROGNAME', 'COLOR_DISCRIPTION', 'COLOR_VERSION',
-                     'COLOR_HEADING', 'COLOR_USAGE', 'COLOR_SUBCOMMANDS'):
-            setattr(self, item, colors(getattr(type(self), item)))
-
-        self.COLOR_GROUPS = defaultdict(lambda: colors())
-        self.COLOR_GROUPS_BODY = defaultdict(lambda: colors())
-        for item in type(self).COLOR_GROUPS:
-            self.COLOR_GROUPS[item] = colors(type(self).COLOR_GROUPS[item])
-        for item in type(self).COLOR_GROUPS_BODY:
-            self.COLOR_GROUPS_BODY[item] = colors(type(self).COLOR_GROUPS_BODY[item])
+        # Filter colors
 
         if self.PROGNAME is None:
             self.PROGNAME = os.path.basename(executable)
+        elif isinstance(self.PROGNAME, colors._style):
+            self.PROGNAME = self.PROGNAME | os.path.basename(executable)
+        elif colors.filter(self.PROGNAME) == '':
+            self.PROGNAME = colors.extract(self.PROGNAME) | os.path.basename(executable)
         if self.DESCRIPTION is None:
-            self.DESCRIPTION = inspect.getdoc(self)
+            self.DESCRIPTION = getdoc(self)
+
+        # Allow None for the colors
+        self.COLOR_GROUPS=defaultdict(lambda:colors.do_nothing, dict() if type(self).COLOR_GROUPS is None else type(self).COLOR_GROUPS )
+        if type(self).COLOR_USAGE is None:
+            self.COLOR_USAGE=colors.do_nothing
 
         self.executable = executable
         self._switches_by_name = {}
@@ -165,10 +142,11 @@ class Application(object):
         for cls in reversed(type(self).mro()):
             for obj in cls.__dict__.values():
                 if isinstance(obj, Subcommand):
-                    if obj.name.startswith("-"):
+                    name = colors.filter(obj.name)
+                    if name.startswith("-"):
                         raise SubcommandError("Subcommand names cannot start with '-'")
                     # it's okay for child classes to override subcommands set by their parents
-                    self._subcommands[obj.name] = obj
+                    self._subcommands[name] = obj
                     continue
 
                 swinfo = getattr(obj, "_switch_info", None)
@@ -245,7 +223,7 @@ class Application(object):
 
             if a in self._subcommands:
                 subcmd = self._subcommands[a].get()
-                self.nested_command = (subcmd, [self.PROGNAME + " " + a] + argv)
+                self.nested_command = (subcmd, [self.PROGNAME + " " + self._subcommands[a].name] + argv)
                 break
 
             elif a.startswith("--") and len(a) >= 3:
@@ -299,7 +277,7 @@ class Application(object):
                 continue
 
             # handle argument
-            val = self._handle_argument(val, swinfo, name)
+            val = self._handle_argument(val, swinfo.argtype, name)
 
             if swinfo.func in swfuncs:
                 if swinfo.list:
@@ -329,7 +307,7 @@ class Application(object):
             if swinfo.func in swfuncs:
                 continue  # skip if overridden by command line arguments
 
-            val = self._handle_argument(envval, swinfo, env)
+            val = self._handle_argument(envval, swinfo.argtype, env)
             envname = "$%s" % (env,)
             if swinfo.list:
                 # multiple values over environment variables are not supported,
@@ -342,14 +320,20 @@ class Application(object):
 
         return swfuncs, tailargs
 
-    def _handle_argument(self, val, swinfo, name):
-        if swinfo.argtype:
+    @classmethod
+    def autocomplete(cls, argv):
+        """This is supplied to make subclassing and testing argument completion methods easier"""
+        pass
+
+    @staticmethod
+    def _handle_argument(val, argtype, name):
+        if argtype:
             try:
-                return swinfo.argtype(val)
+                return argtype(val)
             except (TypeError, ValueError):
                 ex = sys.exc_info()[1]  # compat
                 raise WrongArgumentType("Argument of %s expected to be %r, not %r:\n    %r" % (
-                    name, swinfo.argtype, val, ex))
+                    name, argtype, val, ex))
         else:
             return NotImplemented
 
@@ -383,15 +367,35 @@ class Application(object):
                 raise SwitchCombinationError("Given %s, the following are invalid %r" %
                     (swfuncs[func].swname, [swfuncs[f].swname for f in invalid]))
 
-        m_args, m_varargs, _, m_defaults = inspect.getargspec(self.main)
-        max_args = six.MAXSIZE if m_varargs else len(m_args) - 1
-        min_args = len(m_args) - 1 - (len(m_defaults) if m_defaults else 0)
+        m = six.getfullargspec(self.main)
+        max_args = six.MAXSIZE if m.varargs else len(m.args) - 1
+        min_args = len(m.args) - 1 - (len(m.defaults) if m.defaults else 0)
         if len(tailargs) < min_args:
             raise PositionalArgumentsError("Expected at least %d positional arguments, got %r" %
                 (min_args, tailargs))
         elif len(tailargs) > max_args:
             raise PositionalArgumentsError("Expected at most %d positional arguments, got %r" %
-                (max_args, tailargs))
+                (max_args, tailargs))            
+                
+        # Positional arguement validataion
+        if hasattr(self.main, 'positional'):
+            tailargs = self._positional_validate(tailargs, self.main.positional, self.main.positional_varargs, m.args[1:], m.varargs)
+            
+        elif hasattr(m, 'annotations'):
+            args_names = list(m.args[1:])
+            positional = [None]*len(args_names)
+            varargs = None
+            
+            
+             # All args are positional, so convert kargs to positional
+            for item in m.annotations:
+                if item == m.varargs:
+                    varargs = m.annotations[item]
+                else:
+                    positional[args_names.index(item)] = m.annotations[item]
+
+            tailargs = self._positional_validate(tailargs, positional, varargs,
+                                                 m.args[1:], m.varargs)
 
         ordered = [(f, n, a) for _, f, n, a in
             sorted([(sf.index, f, sf.swname, sf.val) for f, sf in swfuncs.items()])]
@@ -411,6 +415,24 @@ class Application(object):
                     switches.extend((name, v))
         return tuple(switches), tuple(tailargs)
 
+    def _positional_validate(self, args, validator_list, varargs, argnames, varargname):
+        """Makes sure args follows the validation given input"""
+        out_args = list(args)
+        
+        for i in range(min(len(args),len(validator_list))):
+            
+            if validator_list[i] is not None:
+                out_args[i] = self._handle_argument(args[i], validator_list[i], argnames[i])
+        
+        if len(args) > len(validator_list):
+            if varargs is not None:
+                out_args[len(validator_list):] = [
+                    self._handle_argument(a, varargs, varargname) for a in args[len(validator_list):]]
+            else:
+                out_args[len(validator_list):] = args[len(validator_list):]
+        
+        return out_args
+
     @classmethod
     def run(cls, argv = None, exit = True):  # @ReservedAssignment
         """
@@ -427,6 +449,7 @@ class Application(object):
         """
         if argv is None:
             argv = sys.argv
+        cls.autocomplete(argv)
         argv = list(argv)
         inst = cls(argv.pop(0))
         inst._raw_args = argv[:]
@@ -482,23 +505,8 @@ class Application(object):
         """
 
         inst = cls("")
-        swfuncs = {}
-        for index, (swname, val) in enumerate(switches.items(), 1):
-            switch = getattr(cls, swname)
-            swinfo = inst._switches_by_func[switch._switch_info.func]
-            if isinstance(switch, CountOf):
-                p = (range(val),)
-            elif swinfo.list and not hasattr(val, "__iter__"):
-                raise SwitchError("Switch %r must be a sequence (iterable)" % (swname,))
-            elif not swinfo.argtype:
-                # a flag
-                if val not in (True, False, None, Flag):
-                    raise SwitchError("Switch %r is a boolean flag" % (swname,))
-                p = ()
-            else:
-                p = (val,)
-            swfuncs[swinfo.func] = SwitchParseInfo(swname, p, index)
-
+        
+        swfuncs = inst._parse_kwd_args(switches)
         ordered, tailargs = inst._validate_args(swfuncs, args)
         for f, _, a in ordered:
             f(inst, *a)
@@ -516,6 +524,26 @@ class Application(object):
             cleanup()
 
         return inst, retcode
+
+    def _parse_kwd_args(self, switches):
+        """Parses keywords (positional arguments), used by invoke."""
+        swfuncs = {}
+        for index, (swname, val) in enumerate(switches.items(), 1):
+            switch = getattr(type(self), swname)
+            swinfo = self._switches_by_func[switch._switch_info.func]
+            if isinstance(switch, CountOf):
+                p = (range(val),)
+            elif swinfo.list and not hasattr(val, "__iter__"):
+                raise SwitchError("Switch %r must be a sequence (iterable)" % (swname,))
+            elif not swinfo.argtype:
+                # a flag
+                if val not in (True, False, None, Flag):
+                    raise SwitchError("Switch %r is a boolean flag" % (swname,))
+                p = ()
+            else:
+                p = (val,)
+            swfuncs[swinfo.func] = SwitchParseInfo(swname, p, index)
+        return swfuncs
 
     def main(self, *args):
         """Implement me (no need to call super)"""
@@ -562,25 +590,25 @@ class Application(object):
             self.version()
             print("")
         if self.DESCRIPTION:
-            print(self.COLOR_DISCRIPTION[self.DESCRIPTION.strip() + '\n'])
+            print(self.DESCRIPTION.strip() + '\n')
 
-        m_args, m_varargs, _, m_defaults = inspect.getargspec(self.main)
-        tailargs = m_args[1:]  # skip self
-        if m_defaults:
-            for i, d in enumerate(reversed(m_defaults)):
+        m = six.getfullargspec(self.main)
+        tailargs = m.args[1:]  # skip self
+        if m.defaults:
+            for i, d in enumerate(reversed(m.defaults)):
                 tailargs[-i - 1] = "[%s=%r]" % (tailargs[-i - 1], d)
-        if m_varargs:
-            tailargs.append("%s..." % (m_varargs,))
+        if m.varargs:
+            tailargs.append("%s..." % (m.varargs,))
         tailargs = " ".join(tailargs)
 
         with self.COLOR_USAGE:
-            print(self.COLOR_HEADING["Usage:"])
+            print("Usage:")
             if not self.USAGE:
                 if self._subcommands:
                     self.USAGE = "    %(progname)s [SWITCHES] [SUBCOMMAND [SWITCHES]] %(tailargs)s\n"
                 else:
                     self.USAGE = "    %(progname)s [SWITCHES] %(tailargs)s\n"
-            print(self.USAGE % {"progname": self.PROGNAME, "tailargs": tailargs})
+            print(self.USAGE % {"progname": colors.filter(self.PROGNAME), "tailargs": tailargs})
 
         by_groups = {}
         for si in self._switches_by_func.values():
@@ -591,35 +619,32 @@ class Application(object):
         def switchs(by_groups, show_groups):
             for grp, swinfos in sorted(by_groups.items(), key = lambda item: item[0]):
                 if show_groups:
-                    with (self.COLOR_HEADING + self.COLOR_GROUPS[grp]):
-                        print("%s:" % grp)
+                    print(self.COLOR_GROUPS[grp] | grp)
 
-                # Print in body color unless empty, otherwise group color, otherwise nothing
-                with self.COLOR_GROUPS_BODY.get(grp, self.COLOR_GROUPS[grp]):
-                    for si in sorted(swinfos, key = lambda si: si.names):
-                        swnames = ", ".join(("-" if len(n) == 1 else "--") + n for n in si.names
-                            if n in self._switches_by_name and self._switches_by_name[n] == si)
-                        if si.argtype:
-                            if isinstance(si.argtype, type):
-                                typename = si.argtype.__name__
-                            else:
-                                typename = str(si.argtype)
-                            argtype = " %s:%s" % (si.argname.upper(), typename)
+                for si in sorted(swinfos, key = lambda si: si.names):
+                    swnames = ", ".join(("-" if len(n) == 1 else "--") + n for n in si.names
+                        if n in self._switches_by_name and self._switches_by_name[n] == si)
+                    if si.argtype:
+                        if isinstance(si.argtype, type):
+                            typename = si.argtype.__name__
                         else:
-                            argtype = ""
-                        prefix = swnames + argtype
-                        yield si, prefix
+                            typename = str(si.argtype)
+                        argtype = " %s:%s" % (si.argname.upper(), typename)
+                    else:
+                        argtype = ""
+                    prefix = swnames + argtype
+                    yield si, prefix, self.COLOR_GROUPS[grp]
 
                 if show_groups:
                     print("")
 
-        sw_width = max(len(prefix) for si, prefix in switchs(by_groups, False)) + 4
+        sw_width = max(len(prefix) for si, prefix, color in switchs(by_groups, False)) + 4
         cols, _ = get_terminal_size()
         description_indent = "    %s%s%s"
         wrapper = TextWrapper(width = max(cols - min(sw_width, 60), 50) - 6)
         indentation = "\n" + " " * (cols - wrapper.width)
 
-        for si, prefix in switchs(by_groups, True):
+        for si, prefix, color in switchs(by_groups, True):
             help = si.help  # @ReservedAssignment
             if si.list:
                 help += "; may be given multiple times"
@@ -636,15 +661,15 @@ class Application(object):
                 padding = indentation
             else:
                 padding = " " * max(cols - wrapper.width - len(prefix) - 4, 1)
-            print(description_indent % (prefix, padding, msg))
+            print(description_indent % (color | prefix, padding, color | msg))
 
         if self._subcommands:
-            with (self.COLOR_HEADING + self.COLOR_SUBCOMMANDS):
-                print("Subcommands:")
+            gc = self.COLOR_GROUPS["Subcommands"]
+            print(gc | "Subcommands:")
             for name, subcls in sorted(self._subcommands.items()):
-                with self.COLOR_SUBCOMMANDS:
+                with gc:
                     subapp = subcls.get()
-                    doc = subapp.DESCRIPTION if subapp.DESCRIPTION else inspect.getdoc(subapp)
+                    doc = subapp.DESCRIPTION if subapp.DESCRIPTION else getdoc(subapp)
                     help = doc + "; " if doc else ""  # @ReservedAssignment
                     help += "see '%s %s --help' for more info" % (self.PROGNAME, name)
 
@@ -654,7 +679,9 @@ class Application(object):
                         padding = indentation
                     else:
                         padding = " " * max(cols - wrapper.width - len(name) - 4, 1)
-                    print(description_indent % (name, padding, msg))
+                    print(description_indent % (subcls.name, padding, gc | colors.filter(msg)))
+
+
 
     def _get_prog_version(self):
         ver = None
@@ -670,22 +697,6 @@ class Application(object):
     def version(self):
         """Prints the program's version and quits"""
         ver = self._get_prog_version()
-        ver_name = self.COLOR_VERSION[ver if ver is not None else "(version not set)"]
-        program_name = self.COLOR_PROGNAME[self.PROGNAME]
-        print('%s %s' % (program_name, ver_name))
-
-
-
-class ColorfulApplication(Application):
-    """Application with more colorful defaults for easy color output."""
-    COLOR_PROGNAME = colors.cyan + colors.bold
-    COLOR_VERSION = colors.cyan
-    COLOR_DISCRIPTION = colors.green
-    COLOR_HEADING = colors.bold
-    COLOR_USAGE = colors.red
-    COLOR_SUBCOMMANDS = colors.yellow
-    COLOR_GROUPS = {'Switches':colors.blue,
-                    'Meta-switches':colors.magenta,
-                    'Hidden-switches':colors.cyan}
-    COLOR_GROUPS_BODY = COLOR_GROUPS
+        ver_name = ver if ver is not None else "(version not set)"
+        print('{0} {1}'.format(self.PROGNAME, ver_name))
 

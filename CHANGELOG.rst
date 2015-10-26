@@ -1,9 +1,25 @@
-1.6.0 (In development)
+1.6.1 (In development)
 ----------------------
+
+* Bugfix: ``Progress`` works on Python 2.6 (`#230 <https://github.com/tomerfiliba/plumbum/issues/230>`_),
+* Bugfix: Colors now work with more terminals (`#231 <https://github.com/tomerfiliba/plumbum/issues/231>`_)
+* Bugfix: Getting an executible no longer returns a directory  (`#234 <https://ithub.com/tomerfiliba/plumbum/issues/234>`_)
+
+1.6.0
+-----
+* Added support for Python 3.5, PyPy, and better Windows and Mac support, with CI testing (`#218 <https://github.com/tomerfiliba/plumbum/pull/218>`_, `#217 <https://github.com/tomerfiliba/plumbum/pull/217>`_, `#226 <https://github.com/tomerfiliba/plumbum/pull/226>`_)
 * Colors: Added colors module, support for colors added to cli (`#213 <https://github.com/tomerfiliba/plumbum/pull/213>`_)
 * Machines: Added ``.get()`` method for checking several commands. (`#205 <https://github.com/tomerfiliba/plumbum/pull/205>`_)
-* Machines: ``local.cwd`` now is the current directory even if you change the directory with non-Plumbum methods. (`#207 <https://github.com/tomerfiliba/plumbum/pull/207>`_) 
-* Remote machines: Better error message for SSH (`#211 <https://github.com/tomerfiliba/plumbum/pull/211>`_)
+* Machines: ``local.cwd`` now is the current directory even if you change the directory with non-Plumbum methods (fixes unexpected behavior). (`#207 <https://github.com/tomerfiliba/plumbum/pull/207>`_) 
+* SSHMachine: Better error message for SSH (`#211 <https://github.com/tomerfiliba/plumbum/pull/211>`_)
+* SSHMachine: Support for FreeBSD remote (`#220 <https://github.com/tomerfiliba/plumbum/pull/220>`_)
+* Paths: Now a subclass of ``str``, can be opened directly (`#228 <https://github.com/tomerfiliba/plumbum/pull/228>`_)
+* Paths: Improved pathlib compatibility with several additions and renames (`#223 <https://github.com/tomerfiliba/plumbum/pull/223>`_)
+* Paths: Added globbing multiple patterns at once  (`#221 <https://github.com/tomerfiliba/plumbum/pull/221>`_)
+* Commands: added ``NOHUP`` modifier (`#221 <https://github.com/tomerfiliba/plumbum/pull/221>`_)
+* CLI: added positional argument validation (`#225 <https://github.com/tomerfiliba/plumbum/pull/225>`_)
+* CLI: added ``envname``, which allows you specify an environment variable for a ``SwitchAttr`` (`#216 <https://github.com/tomerfiliba/plumbum/pull/216>`_)
+* CLI terminal: addded ``Progress``, a command line progress bar for iterators and ranges (`#214 <https://github.com/tomerfiliba/plumbum/pull/214>`_)
 * Continued to clean out Python 2.5 hacks
 
 1.5.0

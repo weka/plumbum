@@ -78,7 +78,7 @@ class ColorFactory(object):
 
     def __call__(self, val_or_r=None, g = None, b = None):
         """Shortcut to provide way to access colors."""
-        if val_or_r is None or val_or_r is '':
+        if val_or_r is None or (isinstance(val_or_r, str) and val_or_r == ''):
             return self._style()
         if isinstance(val_or_r, self._style):
             return self._style(val_or_r)
@@ -152,7 +152,7 @@ class StyleFactory(ColorFactory):
 
     def get_colors_from_string(self, color=''):
         """
-        Sets color based on string, use `.` or space for seperator,
+        Sets color based on string, use `.` or space for separator,
         and numbers, fg/bg, htmlcodes, etc all accepted (as strings).
         """
 
@@ -175,6 +175,21 @@ class StyleFactory(ColorFactory):
             prev = reduce(lambda a,b: a & b, styleslist)
 
         return prev if isinstance(prev, self._style) else prev.reset
+
+        
+    def filter(self, colored_string):
+        """Filters out colors in a string, returning only the name."""
+        if isinstance(colored_string, self._style):
+            return colored_string
+        return self._style.string_filter_ansi(colored_string)
+
+    def contains_colors(self, colored_string):
+        """Checks to see if a string contains colors."""
+        return self._style.string_contains_colors(colored_string)
+
+    def extract(self, colored_string):
+        """Gets colors from an ansi string, returns those colors"""
+        return self._style.from_ansi(colored_string, True)
 
     def load_stylesheet(self, stylesheet=default_styles):
         for item in stylesheet:

@@ -3,7 +3,7 @@
 Colors
 ------
 
-.. versionadded:: 1.6.0
+.. versionadded:: 1.6
 
 
 The purpose of the `plumbum.colors` library is to make adding
@@ -16,9 +16,10 @@ API for creating other color schemes for other systems using escapes.
 
 .. note:: Enabling color
 
-    ``ANSIStyle`` assumes that only a terminal on a posix-identity
-    system can display color. You can force the use of color globally by setting
-    ``colors.use_color=True``.
+    ``ANSIStyle`` assumes that only a terminal can display color, and looks at
+    the value of the environment variable ``TERM``. You can force the use of color globally by setting
+    ``colors.use_color=4`` (The levels 0-4 are available, with 0 being off). See this :ref:`note <guide-usecolors>`
+    for more options.
 
 Quick start
 ===========
@@ -78,8 +79,26 @@ Styles are accessed through the ``plumbum.colors`` object. This has the followin
     Styles loaded from a stylesheet dictionary, such as ``warn`` and ``info``.
       These allow you to set standard styles based on behavior rather than colors, and you can load a new stylesheet with ``colors.load_stylesheet(...)``.
 
-Also, ``colors.from_ansi(code)`` method allows
+
+Recreating and loading the default stylesheet would look like this:
+
+.. code-block:: python
+
+    >>> default_styles = dict(
+    ...  warn="fg red",
+    ...  title="fg cyan underline bold",
+    ...  fatal="fg red bold",
+    ...  highlight="bg yellow",
+    ...  info="fg blue",
+    ...  success="fg green")
+
+    >>> colors.load_stylesheet(default_styles)
+          
+          
+
+The ``colors.from_ansi(code)`` method allows
 you to create a Style from any ansi sequence, even complex or combined ones.
+
 
 Colors
 ^^^^^^
@@ -97,6 +116,7 @@ input red, green, and blue values (integers from 0-255). ``colors.fg.rgb(code)``
 you to input an html style hex sequence.
 
 Anything you can access from ``colors.fg`` can also be accessed directly from ``colors``.
+
 
 256 Color Support
 =================
@@ -118,6 +138,15 @@ If you want to enforce a specific representation, you can use ``.basic`` (8 colo
 ``.full`` (256 color), or ``.true`` (24 bit color) on a style, and the colors in that Style will conform to
 the output representation and name of the best match color. The internal RGB colors
 are remembered, so this is a non-destructive operation.
+
+.. _guide-usecolors:
+
+.. note::
+
+    Some terminals only support a subset of colors, so keep this in mind when using a larger color set. The standard Ubuntu terminal handles 24 bit color, the Mac terminal only handles 256 colors, and Colorama on Windows only handles 8. See `this gist <https://gist.github.com/XVilka/8346728>`_ for information about support in terminals.
+    If you need to limit the output color, you can set ``colors.use_color`` to
+    0 (no colors), 1 (8 colors), 2 (16 colors), or 3 (256 colors), or 4 (24-bit colors). This option will be
+    automatically guessed for you on initialization.
 
 
 Style manipulations
