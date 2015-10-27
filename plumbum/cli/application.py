@@ -418,6 +418,21 @@ class Application(object):
             sorted([(sf.index, f, sf.swname, sf.val) for f, sf in swfuncs.items()])]
         return ordered, tailargs
 
+    def reformulate(self, exclude=None):
+        ordered, tailargs = self._parsed_args
+        exclude = set(n.lstrip("-") for n in exclude) if exclude else ()
+        switches = []
+        for sw, name, val in ordered:
+            val = (sw.__get__(self, self.__class__),)
+            if name.lstrip("-") in exclude:
+                continue
+            if not val:
+                switches.append(name)
+            else:
+                for v in val:
+                    switches.extend((name, v))
+        return tuple(switches), tuple(tailargs)
+
     def _positional_validate(self, args, validator_list, varargs, argnames, varargname):
         """Makes sure args follows the validation given input"""
         out_args = list(args)
