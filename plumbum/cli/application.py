@@ -402,6 +402,7 @@ class Application(object):
         exclude = set(n.lstrip("-") for n in exclude) if exclude else ()
         switches = []
         for sw, name, val in ordered:
+            val = (sw.__get__(self, self.__class__),)
             if name.lstrip("-") in exclude:
                 continue
             if not val:
