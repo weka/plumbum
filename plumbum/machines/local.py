@@ -238,7 +238,7 @@ class LocalMachine(CommandsProvider):
         if new_session:
             if has_new_subprocess:
                 kwargs["start_new_session"] = True
-            elif subprocess.mswindows:
+            elif hasattr(subprocess, "mswindows") and subprocess.mswindows:
                 kwargs["creationflags"] = kwargs.get("creationflags", 0) | subprocess.CREATE_NEW_PROCESS_GROUP
             else:
                 def preexec_fn(prev_fn = kwargs.get("preexec_fn", lambda: None)):
@@ -246,7 +246,7 @@ class LocalMachine(CommandsProvider):
                     prev_fn()
                 kwargs["preexec_fn"] = preexec_fn
 
-        if subprocess.mswindows and "startupinfo" not in kwargs and stdin not in (sys.stdin, None):
+        if hasattr(subprocess, "mswindows") and subprocess.mswindows and "startupinfo" not in kwargs and stdin not in (sys.stdin, None):
             from plumbum.machines._windows import get_pe_subsystem, IMAGE_SUBSYSTEM_WINDOWS_CUI
             subsystem = get_pe_subsystem(str(executable))
 
@@ -262,7 +262,7 @@ class LocalMachine(CommandsProvider):
                     sui.wShowWindow = subprocess.SW_HIDE  # @UndefinedVariable
 
         if not has_new_subprocess and "close_fds" not in kwargs:
-            if subprocess.mswindows and (stdin is not None or stdout is not None or stderr is not None):
+            if hasattr(subprocess, "mswindows") and subprocess.mswindows and (stdin is not None or stdout is not None or stderr is not None):
                 # we can't close fds if we're on windows and we want to redirect any std handle
                 kwargs["close_fds"] = False
             else:
