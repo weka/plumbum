@@ -150,7 +150,10 @@ class RemotePath(Path):
 
     @_setdoc(Path)
     def is_symlink(self):
-        res = self.remote._path_stat(self)
+        if hasattr(self.remote, '_path_lstat'):
+            res = self.remote._path_lstat(self)
+        else:
+            res = self.remote._path_stat(self)
         if not res:
             return False
         return res.text_mode == "symbolic link"

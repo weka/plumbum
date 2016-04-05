@@ -372,6 +372,23 @@ class ParamikoMachine(BaseRemoteMachine):
         if stat.S_ISREG(st.st_mode):
             res.text_mode = 'regular file'
         return res
+    def _path_lstat(self, fn):
+        try:
+            st = self.sftp.lstat(str(fn))
+        except IOError as e:
+            if e.errno == errno.ENOENT:
+                return None
+            raise OSError(e.errno)
+        res = StatRes((st.st_mode, 0, 0, 0, st.st_uid, st.st_gid,
+                       st.st_size, st.st_atime, st.st_mtime, 0))
+
+        if stat.S_ISDIR(st.st_mode):
+            res.text_mode = 'directory'
+        if stat.S_ISREG(st.st_mode):
+            res.text_mode = 'regular file'
+        if stat.S_ISLNK(st.st_mode):
+            res.text_mode = 'symbolic link'
+        return res
 
 
 
