@@ -238,6 +238,10 @@ class ParamikoMachine(BaseRemoteMachine):
         Returns an SFTP client on top of the current SSH connection; it can be used to manipulate
         files directly, much like an interactive FTP/SFTP session
         """
+        if not self._client.get_transport().active:
+            # Without this self._client.open_sftp() will try to use the old connection
+            self._connected = False
+            # Intentionally trigger the following if statement:
         if not self._sftp or not self._connected:
             self._sftp = self._client.open_sftp()
         return self._sftp
