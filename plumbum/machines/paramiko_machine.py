@@ -2,6 +2,7 @@ import logging
 import errno
 import stat
 import socket
+from threading import RLock
 from plumbum.machines.base import PopenAddons
 from plumbum.machines.remote import BaseRemoteMachine
 from plumbum.machines.session import ShellSession
@@ -172,6 +173,7 @@ class ParamikoMachine(BaseRemoteMachine):
         else:
             self._fqhost = host
         self._paramiko_client = paramiko.SSHClient()
+        self._connecting_lock = RLock()
         if load_system_host_keys:
             self._paramiko_client.load_system_host_keys()
         if port is not None:
@@ -210,19 +212,21 @@ class ParamikoMachine(BaseRemoteMachine):
 
     @property
     def _client(self):
-        if not self._connected:
-            self._paramiko_client.connect(sock=self._make_socket(), **self._connect_params)
-            self._connected = True
-        return self._paramiko_client
+        with self._connecting_lock:
+            if not self._connected:
+                self._paramiko_client.connect(sock=self._make_socket(), **self._connect_params)
+                self._connected = True
+            return self._paramiko_client
 
     @property
     def connected(self):
         return self._connected
 
     def disconnect(self):
-        self._paramiko_client.close()
-        self._connected = False
-        self._sftp = None
+        with self._connecting_lock:
+            self._paramiko_client.close()
+            self._connected = False
+            self._sftp = None
 
     def __str__(self):
         return "paramiko://%s" % (self._fqhost,)
