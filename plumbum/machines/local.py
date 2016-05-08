@@ -102,10 +102,7 @@ class CommandsProvider(object):
         def __init__(self, machine):
             self._machine = machine
         def __getattr__(self, name):
-            try:
-                return self._machine[name]
-            except CommandNotFound:
-                raise AttributeError(name)
+            return self._machine[name]
 
     @property
     def cmd(self):
