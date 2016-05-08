@@ -1,6 +1,6 @@
 import re
 from contextlib import contextmanager
-from plumbum.commands import CommandNotFound, shquote, ConcreteCommand
+from plumbum.commands import CommandNotFound, shquote, ConcreteCommand, ProcessExecutionError
 from plumbum.lib import _setdoc, ProcInfo, six
 from plumbum.machines.local import LocalPath, CommandsProvider
 from tempfile import NamedTemporaryFile
@@ -402,7 +402,13 @@ class BaseRemoteMachine(CommandsProvider):
         self._session.run(" ".join(args))
 
     def _path_read(self, fn):
-        data = self["cat"](fn)
+        try:
+            data = self["cat"](fn)
+        except ProcessExecutionError as exc:
+            if "No such file" in exc.stderr:
+                raise FileNotFoundError
+            else:
+                raise
         if self.encoding and isinstance(data, six.unicode_type):
             data = data.encode(self.encoding)
         return data

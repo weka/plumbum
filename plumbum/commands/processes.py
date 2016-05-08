@@ -122,7 +122,7 @@ class ProcessLineTimedOut(Exception):
         self.machine = machine
 
 
-class CommandNotFound(AttributeError):
+class CommandNotFound(Exception):
     """Raised by :func:`local.which <plumbum.machines.local.LocalMachine.which>` and
     :func:`RemoteMachine.which <plumbum.machines.remote.RemoteMachine.which>` when a
     command was not found in the system's ``PATH``"""
