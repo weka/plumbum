@@ -20,7 +20,13 @@ except ImportError:
 # utility functions
 #===================================================================================================
 def _check_process(proc, retcode, timeout, stdout, stderr):
-    proc.verify(retcode, timeout, stdout, stderr)
+    try:
+        proc.verify(retcode, timeout, stdout, stderr)
+    except Exception as exception:
+        on_fail = getattr(proc, "on_fail", None)
+        if on_fail:
+            on_fail(proc=proc, retcode=retcode, timeout=timeout, stdout=stdout, stderr=stderr, exception=exception)
+        raise
     on_done = getattr(proc, "on_done", None)
     if on_done:
         on_done(proc=proc, retcode=retcode, timeout=timeout, stdout=stdout, stderr=stderr)
