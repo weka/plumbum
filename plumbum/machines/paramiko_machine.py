@@ -252,7 +252,7 @@ class ParamikoMachine(BaseRemoteMachine):
         return self._sftp
 
     @_setdoc(BaseRemoteMachine)
-    def session(self, isatty = False, term = "vt100", width = 80, height = 24, new_session = False):
+    def session(self, isatty = False, term = "vt100", width = 80, height = 24, new_session = False, connect_timeout = 5):
         # new_session is ignored for ParamikoMachine
         trans = self._client.get_transport()
         trans.set_keepalive(self._keep_alive)
@@ -265,7 +265,7 @@ class ParamikoMachine(BaseRemoteMachine):
         stdout = chan.makefile('rb', -1)
         stderr = chan.makefile_stderr('rb', -1)
         proc = ParamikoPopen(["<shell>"], stdin, stdout, stderr, self.encoding, self)
-        return ShellSession(proc, self.encoding, isatty)
+        return ShellSession(proc, self.encoding, isatty, connect_timeout)
 
     @_setdoc(BaseRemoteMachine)
     def popen(self, args, stdin = None, stdout = None, stderr = None, new_session = False, cwd = None):
