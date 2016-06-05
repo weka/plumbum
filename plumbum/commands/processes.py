@@ -32,6 +32,17 @@ def _check_process(proc, retcode, timeout, stdout, stderr):
         on_done(proc=proc, retcode=retcode, timeout=timeout, stdout=stdout, stderr=stderr)
     return proc.returncode, stdout, stderr
 
+
+def _abort_process(proc, timeout):
+    proc.close()
+    proc.stdin.close()
+    proc.stdout.close()
+    proc.stderr.close()
+    on_abort = getattr(proc, "on_abort", None)
+    if on_abort:
+        on_abort(proc=proc, timeout=timeout)
+
+
 def _iter_lines(proc, decode, linesize, line_timeout=None):
 
     try:
@@ -237,7 +248,7 @@ def run_proc(proc, retcode, timeout = None):
 #===================================================================================================
 # iter_lines
 #===================================================================================================
-def iter_lines(proc, retcode = 0, timeout = None, linesize = -1, _iter_lines = _iter_lines, line_timeout=None):
+def iter_lines(proc, retcode = 0, timeout = None, linesize = -1, _iter_lines = _iter_lines, line_timeout=None, close_on_abort=True):
     """Runs the given process (equivalent to run_proc()) and yields a tuples of (out, err) line pairs.
     If the exit code of the process does not match the expected one, :class:`ProcessExecutionError
     <plumbum.commands.ProcessExecutionError>` is raised.
@@ -254,6 +265,10 @@ def iter_lines(proc, retcode = 0, timeout = None, linesize = -1, _iter_lines = _
     :param linesize: Maximum number of characters to read from stdout/stderr at each iteration.
                     ``-1`` (default) reads until a b'\\n' is encountered.
 
+    :param close_on_abort: Close the process if iteration is aborted (defaults to 0).
+                           If the iteration is not aborted, the process will be closed anyways
+                           once the generator is done.
+
     :returns: An iterator of (out, err) line tuples.
     """
 
@@ -266,14 +281,19 @@ def iter_lines(proc, retcode = 0, timeout = None, linesize = -1, _iter_lines = _
     _register_proc_timeout(proc, timeout)
 
     buffers = [[], []]
-    for t, line in _iter_lines(proc, decode, linesize, line_timeout):
-        ret = [None, None]
-        ret[t] = line
-        buff = buffers[t]
-        buff.append(line)
-        if len(buff) > 100:
-            buff[:2] = ["<...previous lines omitted...>"]
-        yield ret
+    try:
+        for t, line in _iter_lines(proc, decode, linesize, line_timeout):
+            ret = [None, None]
+            ret[t] = line
+            buff = buffers[t]
+            buff.append(line)
+            if len(buff) > 100:
+                buff[:2] = ["<...previous lines omitted...>"]
+            yield ret
+    except GeneratorExit:
+        if close_on_abort:
+            _abort_process(proc, timeout)
+        raise
 
     # this will take care of checking return code and timeouts
     proc.stdout, proc.stderr = ("\n".join(s) for s in buffers)
