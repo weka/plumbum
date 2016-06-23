@@ -139,13 +139,14 @@ class FG(ExecutionModifier):
         vim & FG       # run vim in the foreground, expecting an exit code of 0
         vim & FG(7)    # run vim in the foreground, expecting an exit code of 7
     """
-    __slots__ = ("retcode",)
+    __slots__ = ("retcode", "timeout")
 
-    def __init__(self, retcode=0):
+    def __init__(self, retcode=0, timeout=None):
         self.retcode = retcode
+        self.timeout = timeout
 
     def __rand__(self, cmd):
-        cmd(retcode = self.retcode, stdin = None, stdout = None, stderr = None)
+        cmd(retcode = self.retcode, stdin = None, stdout = None, stderr = None, timeout=self.timeout)
 
 FG = FG()
 
