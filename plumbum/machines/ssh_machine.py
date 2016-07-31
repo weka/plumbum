@@ -1,11 +1,12 @@
+import warnings
+
+from plumbum.commands import ProcessExecutionError, shquote
 from plumbum.lib import _setdoc, IS_WIN32
+from plumbum.machines.local import local
 from plumbum.machines.remote import BaseRemoteMachine
 from plumbum.machines.session import ShellSession
-from plumbum.machines.local import local
 from plumbum.path.local import LocalPath
 from plumbum.path.remote import RemotePath
-from plumbum.commands import ProcessExecutionError, shquote
-import warnings
 
 
 class SshTunnel(object):
@@ -72,7 +73,11 @@ class SshMachine(BaseRemoteMachine):
 
     def __init__(self, host, user = None, port = None, keyfile = None, ssh_command = None,
             scp_command = None, ssh_opts = (), scp_opts = (), password = None, encoding = "utf8",
-            connect_timeout = 10, new_session = False):
+            connect_timeout = 10, new_session = False, config_file=None):
+
+        self.host = host
+        self.port = port or 22
+        self.hostname = host
 
         if ssh_command is None:
             if password is not None:
@@ -87,6 +92,10 @@ class SshMachine(BaseRemoteMachine):
 
         scp_args = []
         ssh_args = []
+        if config_file:
+            ssh_args.extend(['-F', config_file])
+            scp_args.extend(['-F', config_file])
+
         if user:
             self._fqhost = "%s@%s" % (user, host)
         else:
