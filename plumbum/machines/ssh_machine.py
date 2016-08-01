@@ -73,11 +73,12 @@ class SshMachine(BaseRemoteMachine):
 
     def __init__(self, host, user = None, port = None, keyfile = None, ssh_command = None,
             scp_command = None, ssh_opts = (), scp_opts = (), password = None, encoding = "utf8",
-            connect_timeout = 10, new_session = False, config_file=None):
+            connect_timeout = 10, new_session = False, config_file=None, use_mosh_for_interactive=False):
 
         self.host = host
         self.port = port or 22
         self.hostname = host
+        self.use_mosh_for_interactive = use_mosh_for_interactive
 
         if ssh_command is None:
             if password is not None:
@@ -119,7 +120,8 @@ class SshMachine(BaseRemoteMachine):
 
     @_setdoc(BaseRemoteMachine)
     def popen(self, args, ssh_opts = (), **kwargs):
-        if all(kwargs.get(p, 'n/a') is None for p in "stdin stdout stderr".split()):
+        interactive = all(kwargs.get(p, 'n/a') is None for p in "stdin stdout stderr".split())
+        if interactive and not self.use_mosh_for_interactive:
             ssh_opts = ssh_opts + ('-t',)
         cmdline = []
         cmdline.extend(ssh_opts)
@@ -136,7 +138,13 @@ class SshMachine(BaseRemoteMachine):
                 args, executable = self._as_user_stack[-1](args)
             cmdline.extend(args)
 
-        return self._ssh_command[tuple(cmdline)].popen(ignore_user_stack=True, **kwargs)
+        if interactive and self.use_mosh_for_interactive:
+            ip, cmdline = cmdline[0], cmdline[1:]
+            escaped_cmd = " ".join(map(str, cmdline))
+            cmd = local.cmd.mosh['--ssh', " ".join(self._ssh_command.formulate(level=1)), '--', ip, "bash", "-ct"][escaped_cmd]
+        else:
+            cmd = self._ssh_command[tuple(cmdline)]
+        return cmd.popen(ignore_user_stack=True, **kwargs)
 
     def nohup(self, command):
         """
