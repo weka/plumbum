@@ -230,7 +230,18 @@ class Flag(SwitchAttr):
     """
     def __init__(self, names, default = False, **kwargs):
         SwitchAttr.__init__(self, names, argtype = None, default = default, list = False, **kwargs)
+
+    def bool(self, val):
+        return val in ['yes', '1', 'true']
+
     def __call__(self, inst):
+        # Set by envvar. This is not precedence order, parsed args already does this job
+        for args in inst._parsed_args:
+            if args and type(args[0]) is tuple and args[0][0] is self:
+                if args[0][1].startswith('$'):
+                    self.__set__(inst, self.bool(local.env[self._switch_info.envname]))
+                    return
+        # Set by cli
         self.__set__(inst, not self._default_value)
 
 class CountOf(SwitchAttr):
