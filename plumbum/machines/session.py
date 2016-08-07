@@ -167,7 +167,7 @@ class ShellSession(object):
                 self.close()
             timer = threading.Timer(connect_timeout, closer)
             timer.start()
-        self.run("")
+        # self.run("")
         if connect_timeout:
             timer.cancel()
 
