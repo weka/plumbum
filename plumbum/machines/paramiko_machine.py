@@ -10,6 +10,7 @@ from plumbum.lib import _setdoc, six
 from plumbum.path.local import LocalPath
 from plumbum.path.remote import RemotePath, StatRes
 from plumbum.commands.processes import iter_lines, ProcessLineTimedOut
+from plumbum.commands.base import shquote
 
 
 try:
@@ -275,7 +276,7 @@ class ParamikoMachine(BaseRemoteMachine):
         argv.extend(["cd", str(cwd or self.cwd), "&&"])
         if envdelta:
             argv.append("env")
-            argv.extend("%s=%s" % (k, v) for k, v in envdelta.items())
+            argv.extend("%s=%s" % (k, shquote(v)) for k, v in envdelta.items())
         args = args.formulate()
         if self._as_user_stack:
             args, executable = self._as_user_stack[-1](args)
