@@ -127,7 +127,7 @@ class SshMachine(BaseRemoteMachine):
             cmdline.extend(["cd", str(self.cwd), "&&"])
             if envdelta:
                 cmdline.append("env")
-                cmdline.extend("%s=%s" % (k, v) for k, v in envdelta.items())
+                cmdline.extend("%s=%s" % (k, shquote(v)) for k, v in envdelta.items())
             if not isinstance(args, (tuple, list)):
                 args = [args]
             if self._as_user_stack:
