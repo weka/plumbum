@@ -149,7 +149,8 @@ class BaseRemoteMachine(CommandsProvider):
 
     # allow inheritors to override the RemoteCommand class
     RemoteCommand = RemoteCommand
-    
+    env_cls = RemoteEnv
+
     @property
     def cwd(self):
         if not hasattr(self, '_cwd'):
@@ -162,7 +163,7 @@ class BaseRemoteMachine(CommandsProvider):
         self.connect_timeout = connect_timeout
         self._session = self.session(new_session = new_session)
         self.uname = self._get_uname()
-        self.env = RemoteEnv(self)
+        self.env = self.env_cls(self)
         self._python = None
 
     def _get_uname(self):
