@@ -36,8 +36,8 @@ class ParamikoPopen(PopenAddons):
         self.stdin = stdin
         self.stdout = stdout
         self.stderr = stderr
-        self.encoding = encoding
         self.machine = machine
+        self.custom_encoding = encoding
         self.returncode = None
         self.pid = None
         self.stdin_file = stdin_file
@@ -99,8 +99,8 @@ class ParamikoPopen(PopenAddons):
             else:
                 coll.append(line)
         self.wait()
-        stdout = six.b("").join(six.b(s) for s in stdout)
-        stderr = six.b("").join(six.b(s) for s in stderr)
+        stdout = "".join(s for s in stdout).encode(self.custom_encoding)
+        stderr = "".join(s for s in stderr).encode(self.custom_encoding)
         return stdout, stderr
 
     def iter_lines(self, timeout=None, **kwargs):
@@ -260,13 +260,13 @@ class ParamikoMachine(BaseRemoteMachine):
         chan = trans.open_session()
         if isatty:
             chan.get_pty(term, width, height)
-            chan.set_combine_stderr()
+            chan.set_combine_stderr(True)
         chan.invoke_shell()
         stdin = chan.makefile('wb', -1)
         stdout = chan.makefile('rb', -1)
         stderr = chan.makefile_stderr('rb', -1)
-        proc = ParamikoPopen(["<shell>"], stdin, stdout, stderr, self.encoding, self)
-        return ShellSession(proc, self.encoding, isatty, connect_timeout)
+        proc = ParamikoPopen(["<shell>"], stdin, stdout, stderr, self.custom_encoding, self)
+        return ShellSession(proc, self.custom_encoding, isatty, connect_timeout)
 
     @_setdoc(BaseRemoteMachine)
     def popen(self, args, stdin = None, stdout = None, stderr = None, new_session = False, cwd = None):
@@ -284,7 +284,7 @@ class ParamikoMachine(BaseRemoteMachine):
         cmdline = " ".join(argv)
         logger.debug(cmdline)
         si, so, se = streams = self._client.exec_command(cmdline, 1)
-        proc = ParamikoPopen(argv, si, so, se, self.encoding, self, stdin_file = stdin,
+        proc = ParamikoPopen(argv, si, so, se, self.custom_encoding, self, stdin_file = stdin,
             stdout_file = stdout, stderr_file = stderr)
         return proc
 
@@ -363,8 +363,8 @@ class ParamikoMachine(BaseRemoteMachine):
         f.close()
         return data
     def _path_write(self, fn, data):
-        if self.encoding and isinstance(data, six.unicode_type):
-            data = data.encode(self.encoding)
+        if self.custom_encoding and isinstance(data, six.unicode_type):
+            data = data.encode(self.custom_encoding)
         f = self.sftp.open(str(fn), 'wb')
         f.write(data)
         f.close()
@@ -454,13 +454,13 @@ def _iter_lines(proc, decode, linesize, line_timeout=None):
 
     for _ in selector():
         if proc.stdout.channel.recv_ready():
-            yield 0, decode(six.b(proc.stdout.readline(linesize)))
+            yield 0, proc.stdout.readline(linesize)
         if proc.stdout.channel.recv_stderr_ready():
-            yield 1, decode(six.b(proc.stderr.readline(linesize)))
+            yield 1, proc.stderr.readline(linesize)
         if proc.poll() is not None:
             break
 
     for line in proc.stdout:
-        yield 0, decode(six.b(line))
+        yield 0, line
     for line in proc.stderr:
-        yield 1, decode(six.b(line))
+        yield 1, line

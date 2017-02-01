@@ -36,6 +36,7 @@ def sshpass():
         pytest.skip('Test requires sshpass')
 
 
+@skip_on_windows
 def test_connection():
     SshMachine(TEST_HOST)
 
@@ -142,6 +143,14 @@ s.close()
                 assert "test_remote.py" in cmd()
                 assert "test_remote.py" in [f.name for f in rem.cwd // "*.py"]
 
+    # Testing for #271
+    def test_double_chdir(self):
+        with self._connect() as rem:
+            with rem.cwd(os.path.dirname(os.path.abspath(__file__))):
+                 rem["ls"]()
+            with rem.cwd("/tmp"):
+                 rem["pwd"]()
+
     def test_glob(self):
         with self._connect() as rem:
             with rem.cwd(os.path.dirname(os.path.abspath(__file__))):
@@ -203,7 +212,7 @@ s.close()
     def test_iter_lines_timeout(self):
         with self._connect() as rem:
             try:
-                for i, (out, err) in enumerate(rem["ping"]["-i", 0.5, "127.0.0.1"].popen().iter_lines(timeout=2)):
+                for i, (out, err) in enumerate(rem["ping"]["-i", 0.5, "127.0.0.1"].popen().iter_lines(timeout=4)):
                     print("out:", out)
                     print("err:", err)
             except NotImplementedError:
@@ -272,6 +281,7 @@ class TestRemoteMachine(BaseRemoteMachineTest):
         with self._connect() as rem:
             assert list(rem.pgrep("ssh"))
 
+    @pytest.mark.xfail(reason="Randomly does not work on Travis, not sure why")
     def test_nohup(self):
         with self._connect() as rem:
             sleep = rem["sleep"]
@@ -345,4 +355,12 @@ class TestParamikoMachine(BaseRemoteMachineTest):
             else:
                 pytest.fail("Should not pipe")
 
+    def test_encoding(self):
+        with self._connect() as rem:
+            unicode_half = b"\xc2\xbd".decode("utf8")
 
+            ret = rem['bash']("-c", "echo %s" % unicode_half)
+            assert ret == "%s\n" % unicode_half
+
+            ret = list(rem['bash']["-c", "echo %s" % unicode_half].popen())
+            assert ret == [["%s\n" % unicode_half, None]]

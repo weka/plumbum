@@ -23,9 +23,9 @@ might look like this::
         verbose = cli.Flag(["v", "verbose"], help = "If given, I will be very talkative")
         
         def main(self, filename):
-            print "I will now read", filename
+            print("I will now read {0}".format(filename))
             if self.verbose:
-                print "Yadda " * 200
+                print("Yadda " * 200)
     
     if __name__ == "__main__":
         MyApp.run()
@@ -174,7 +174,7 @@ For instance ::
             self._port = port
         
         def main(self):
-            print self._port
+            print(self._port)
 
 ::
 
@@ -202,7 +202,7 @@ these values. Here's an example ::
             self._mode = mode
         
         def main(self):
-            print self._port, self._mode
+            print(self._port, self._mode)
 
 ::
 
@@ -235,7 +235,7 @@ only be given once, unless you allow multiple occurrences by passing ``list = Tr
             self._dirs = dirs
         
         def main(self):
-            print self._dirs
+            print(self._dirs)
 
 ::
 
@@ -317,16 +317,16 @@ a certain switch is given. For this purpose, the toolkit provides
 :class:`SwitchAttr <plumbum.cli.SwitchAttr>`, which is `data descriptor 
 <http://docs.python.org/howto/descriptor.html>`_ that stores the argument in an instance attribute.
 There are two additional "flavors" of ``SwitchAttr``: ``Flag`` (which toggles its default value
-if the switch is given) and ``CountingAttr`` (which counts the number of occurrences of the switch)
+if the switch is given) and ``CountOf`` (which counts the number of occurrences of the switch)
 ::
 
     class MyApp(cli.Application):
         log_file = cli.SwitchAttr("--log-file", str, default = None)
         enable_logging = cli.Flag("--no-log", default = True)
-        verbosity_level = cli.CountingAttr("-v")
+        verbosity_level = cli.CountOf("-v")
         
         def main(self):
-            print self.log_file, self.enable_logging, self.verbosity_level
+            print(self.log_file, self.enable_logging, self.verbosity_level)
 
 .. code-block:: bash
 
@@ -369,7 +369,7 @@ arguments that may be given is unbound ::
 
     class MyApp(cli.Application):
         def main(self, src, dst, mode = "normal"):
-            print src, dst, mode
+            print(src, dst, mode)
 
 ::
 
@@ -391,7 +391,7 @@ With varargs::
 
     class MyApp(cli.Application):
         def main(self, src, dst, *eggs):
-            print src, dst, eggs
+            print(src, dst, eggs)
 
 ::
 
@@ -411,7 +411,7 @@ You can supply positional argument validators using the ``cli.positional`` decor
 pass the validators in the decorator matching the names in the main function. For example::
 
     class MyApp(cli.Application):
-        @cli.positional(cli.ExistingFile, cli.NonexistantPath)
+        @cli.positional(cli.ExistingFile, cli.NonexistentPath)
         def main(self, infile, *outfiles):
             "infile is a path, outfiles are a list of paths, proper errors are given"
 
@@ -419,7 +419,7 @@ If you only want to run your application in Python 3, you can also use annotatio
 specify the validators. For example::
 
     class MyApp(cli.Application):
-        def main(self, infile : cli.ExistingFile, *outfiles : cli.NonexistantPath):
+        def main(self, infile : cli.ExistingFile, *outfiles : cli.NonexistentPath):
         "Identical to above MyApp"
 
 Annotations are ignored if the positional decorator is present.
@@ -467,10 +467,10 @@ attached to the root application using the ``subcommand`` decorator ::
         
         def main(self, *args):
             if args:
-                print "Unknown command %r" % (args[0],)
+                print("Unknown command {0!r}".format(args[0]))
                 return 1   # error exit code
             if not self.nested_command:           # will be ``None`` if no sub-command follows
-                print "No command given"
+                print("No command given")
                 return 1   # error exit code
 
     @Geet.subcommand("commit")                    # attach 'geet commit'
@@ -481,13 +481,13 @@ attached to the root application using the ``subcommand`` decorator ::
         message = cli.SwitchAttr("-m", str, mandatory = True, help = "sets the commit message")
 
         def main(self):
-            print "doing the commit..."
+            print("doing the commit...")
 
     @Geet.subcommand("push")                      # attach 'geet push'
     class GeetPush(cli.Application):
         """pushes the current local branch to the remote one"""
         def main(self, remote, branch = None):
-            print "doing the push..."
+            print("doing the push...")
 
     if __name__ == "__main__":
         Geet.run()
@@ -531,6 +531,26 @@ Here's an example of running this application::
     $ python geet.py commit -m "foo"
     committing...
 
+
+Configuration parser
+--------------------
+
+Another common task of a cli application is provided by a configuration parser, with an INI backend: ``Config`` (or ``ConfigINI`` to explicitly request the INI backend). An example of it's use::
+
+    from plumbum import cli
+
+    with cli.Config('~/.myapp_rc') as conf:
+        one = conf.get('one', '1')
+        two = conf.get('two', '2')
+
+If no configuration file is present, this will create one and each call to ``.get`` will set the value with the given default.
+The file is created when the context manager exits.
+If the file is present, it is read and the values from the file are selected, and nothing is changed.
+You can also use ``[]`` syntax to forcably set a value, or to get a value with a standard ``ValueError`` if not present.
+If you want to avoid the context manager, you can use ``.read`` and ``.write`` as well.
+
+The ini parser will default to using the ``[DEFAULT]`` section for values, just like Python's ConfigParser on which it is based. If you want to use a different section, simply seperate section and heading with a ``.`` in the key. ``conf['section.item']`` would place ``item`` under ``[section]``. All items stored in an ``ConfigINI`` are converted to ``str``, and ``str`` is always returned.
+
 Terminal Utilities
 ------------------
 
@@ -548,6 +568,14 @@ remaining displayed. If you need to create a progress bar for a fast iterator bu
         time.sleep(1)
 
 If you have something that produces output, but still needs a progress bar, pass ``has_output=True`` to force the bar not to try to erase the old one each time.
+
+A command line image plotter (``Image``) is provided in ``plumbum.cli.image``. It can plot a PIL-like image ``im`` using::
+
+    Image().show_pil(im)
+
+The Image constructor can take an optional size (defaults to the current terminal size if None), and a `char_ratio`, a height to width measure for your current font. It defaults to a common value of 2.45. If set to None, the ratio is ignored and the image will no longer be constrained to scale proportionately. To directly plot an image, the ``show`` method takes a filename and a double parameter, which doubles the vertical resolution on some fonts. The `show_pil` and `show_pil_double`
+methods directly take a PIL-like object. To plot an image from the command line,  
+the module can be run directly: ``python -m plumbum.cli.image myimage.png``.
 
 For the full list of helpers or more information, see the :ref:`api docs <api-cli>`.
 

@@ -2,6 +2,7 @@ import os
 from select import select
 from subprocess import PIPE
 import sys
+import time
 from itertools import chain
 
 from plumbum.commands.processes import run_proc, ProcessExecutionError
@@ -97,34 +98,17 @@ class BG(ExecutionModifier):
        every once in a while, using a monitoring thread/reactor in the background.
        For more info, see `#48 <https://github.com/tomerfiliba/plumbum/issues/48>`_
     """
-    __slots__ = ("retcode", "kargs")
+    __slots__ = ("retcode", "kargs", "timeout")
 
-    def __init__(self, retcode=0, **kargs):
+    def __init__(self, retcode=0, timeout=None, **kargs):
         self.retcode = retcode
         self.kargs = kargs
+        self.timeout = timeout
 
     def __rand__(self, cmd):
-        return Future(cmd.popen(**self.kargs), self.retcode)
+        return Future(cmd.popen(**self.kargs), self.retcode, timeout=self.timeout)
 
 BG = BG()
-
-"""
-An execution modifier that runs the given command in the background, returning a
-:class:`Future <plumbum.commands.Future>` object. In order to mimic shell syntax, it applies
-when you right-and it with a command. If you wish to expect a different return code
-(other than the normal success indicate by 0), use ``BG(retcode)``. Example::
-
-    future = sleep[5] & BG       # a future expecting an exit code of 0
-    future = sleep[5] & BG(7)    # a future expecting an exit code of 7
-
-.. note::
-
-   When processes run in the **background** (either via ``popen`` or
-   :class:`& BG <plumbum.commands.BG>`), their stdout/stderr pipes might fill up,
-   causing them to hang. If you know a process produces output, be sure to consume it
-   every once in a while, using a monitoring thread/reactor in the background.
-   For more info, see `#48 <https://github.com/tomerfiliba/plumbum/issues/48>`_
-"""
 
 class FG(ExecutionModifier):
     """
@@ -146,7 +130,8 @@ class FG(ExecutionModifier):
         self.timeout = timeout
 
     def __rand__(self, cmd):
-        cmd(retcode = self.retcode, stdin = None, stdout = None, stderr = None, timeout=self.timeout)
+        cmd(retcode = self.retcode, stdin = None, stdout = None, stderr = None,
+            timeout = self.timeout)
 
 FG = FG()
 
@@ -163,19 +148,21 @@ class TEE(ExecutionModifier):
     Returns a tuple of (return code, stdout, stderr), just like ``run()``.
     """
 
-    __slots__ = ("retcode", "buffered")
+    __slots__ = ("retcode", "buffered", "timeout")
 
-    def __init__(self, retcode=0, buffered=True):
+    def __init__(self, retcode=0, buffered=True, timeout=None):
         """`retcode` is the return code to expect to mean "success".  Set
         `buffered` to False to disable line-buffering the output, which may
         cause stdout and stderr to become more entangled than usual.
         """
         self.retcode = retcode
         self.buffered = buffered
+        self.timeout = timeout
 
 
     def __rand__(self, cmd):
-        with cmd.bgrun(retcode=self.retcode, stdin=None, stdout=PIPE, stderr=PIPE) as p:
+        with cmd.bgrun(retcode=self.retcode, stdin=None, stdout=PIPE, stderr=PIPE,
+                       timeout=self.timeout) as p:
             outbuf = []
             errbuf = []
             out = p.stdout
@@ -225,14 +212,15 @@ class TF(ExecutionModifier):
         local['touch']['/root/test'] & TF(FG=True) * Returns False, will show error message
     """
 
-    __slots__ = ("retcode", "FG")
+    __slots__ = ("retcode", "FG", "timeout")
 
-    def __init__(self, retcode=0, FG=False):
+    def __init__(self, retcode=0, FG=False, timeout=None):
         """`retcode` is the return code to expect to mean "success".  Set
         `FG` to True to run in the foreground.
         """
         self.retcode = retcode
         self.FG = FG
+        self.timeout = timeout
 
     @classmethod
     def __call__(cls, *args, **kwargs):
@@ -241,9 +229,10 @@ class TF(ExecutionModifier):
     def __rand__(self, cmd):
         try:
             if self.FG:
-                cmd(retcode = self.retcode, stdin = None, stdout = None, stderr = None)
+                cmd(retcode = self.retcode, stdin = None, stdout = None, stderr = None,
+                    timeout = self.timeout)
             else:
-                cmd(retcode = self.retcode)
+                cmd(retcode = self.retcode, timeout = self.timeout)
             return True
         except ProcessExecutionError:
             return False
@@ -265,12 +254,13 @@ class RETCODE(ExecutionModifier):
         local['touch']['/root/test'] & RETCODE(FG=True) * Returns 1, will show error message
     """
 
-    __slots__ = ("foreground",)
+    __slots__ = ("foreground", "timeout")
 
-    def __init__(self,  FG=False):
+    def __init__(self,  FG=False, timeout=None):
         """`FG` to True to run in the foreground.
         """
         self.foreground = FG
+        self.timeout = timeout
 
     @classmethod
     def __call__(cls, *args, **kwargs):
@@ -278,9 +268,10 @@ class RETCODE(ExecutionModifier):
 
     def __rand__(self, cmd):
             if self.foreground:
-                return cmd.run(retcode = None, stdin = None, stdout = None, stderr = None)[0]
+                return cmd.run(retcode = None, stdin = None, stdout = None, stderr = None,
+                               timeout = self.timeout)[0]
             else:
-                return cmd.run(retcode = None)[0]
+                return cmd.run(retcode = None, timeout = self.timeout)[0]
 
 RETCODE = RETCODE()
 
@@ -317,7 +308,6 @@ class NOHUP(ExecutionModifier):
         self.stdout = stdout
         self.stderr = stderr
         self.append = append
-
 
     def __rand__(self, cmd):
         if isinstance(cmd, StdoutRedirection):

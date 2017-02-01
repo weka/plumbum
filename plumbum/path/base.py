@@ -81,6 +81,18 @@ class Path(str, six.ABC):
             return RelativePath(parts)
         return self._form("/", *parts)
 
+    def __fpath__(self):
+        """Added for Python 3.6 support"""
+        return str(self)
+
+    def __contains__(self, item):
+        """Paths should support checking to see if an file or folder is in them."""
+        try:
+            return (self / item.name).exists()
+        except AttributeError:
+            return (self / item).exists()
+
+    @abstractmethod
     def _form(self, *parts):
         pass
 
@@ -300,7 +312,7 @@ class Path(str, six.ABC):
     def unlink(self):
         """Deletes a symbolic link"""
 
-    def split(self):
+    def split(self, *dummy_args, **dummy_kargs):
         """Splits the path on directory separators, yielding a list of directories, e.g,
         ``"/var/log/messages"`` will yield ``['var', 'log', 'messages']``.
         """

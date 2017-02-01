@@ -46,7 +46,7 @@ def shquote_list(seq):
 class BaseCommand(object):
     """Base of all command objects"""
 
-    __slots__ = ["cwd", "env", "encoding", "__weakref__"]
+    __slots__ = ["cwd", "env", "custom_encoding", "__weakref__"]
 
     def __str__(self):
         return " ".join(self.formulate())
@@ -75,15 +75,21 @@ class BaseCommand(object):
         return StdinDataRedirection(self, data)
 
     def __getitem__(self, args):
-        """Creates a bound-command with the given arguments"""
+        """Creates a bound-command with the given arguments. Shortcut for
+        bound_command."""
         if not isinstance(args, (tuple, list)):
             args = [args, ]
+        return self.bound_command(*args)
+
+    def bound_command(self, *args):
+        """Creates a bound-command with the given arguments"""
         if not args:
             return self
         if isinstance(self, BoundCommand):
             return BoundCommand(self.cmd, self.args + list(args))
         else:
             return BoundCommand(self, args)
+
 
     def __call__(self, *args, **kwargs):
         """A shortcut for `run(args)`, returning only the process' stdout"""
@@ -135,7 +141,7 @@ class BaseCommand(object):
         :returns: A ``Popen``-like object
         """
         raise NotImplementedError()
-        
+
     def nohup(self, command, cwd='.', stdout='nohup.out', stderr=None, append=True):
         """Runs a command detached."""
         return self.machine.daemonic_popen(self, cwd, stdout, stderr, append)
@@ -306,7 +312,10 @@ class Pipeline(BaseCommand):
             try:
                 or_retcode = [0] + list(retcode)
             except TypeError:
-                or_retcode = [0, retcode]
+                if (retcode is None):
+                    or_retcode = None # no-retcode-verification acts "greedily"
+                else:
+                    or_retcode = [0, retcode]
             proc.srcproc.verify(or_retcode, timeout, stdout, stderr)
             dstproc_verify(retcode, timeout, stdout, stderr)
         dstproc.verify = MethodType(verify, dstproc)
@@ -415,26 +424,26 @@ class StdinDataRedirection(BaseCommand):
 
 class ConcreteCommand(BaseCommand):
     QUOTE_LEVEL = None
-    __slots__ = ["executable", "encoding"]
+    __slots__ = ["executable", "custom_encoding"]
     def __init__(self, executable, encoding):
         self.executable = executable
-        self.encoding = encoding
+        self.custom_encoding = encoding
         self.cwd = None
         self.env = None
-        
+
     def __str__(self):
         return str(self.executable)
-        
+
     def __repr__(self):
-        return "{0}({1})".format(type(self).__name__, self.executable)        
-    
+        return "{0}({1})".format(type(self).__name__, self.executable)
+
     def _get_encoding(self):
-        return self.encoding
+        return self.custom_encoding
 
     def formulate(self, level = 0, args = ()):
         argv = [str(self.executable)]
         for a in args:
-            if not a and a != "":
+            if a is None:
                 continue
             if isinstance(a, BaseCommand):
                 if level >= self.QUOTE_LEVEL:
@@ -445,12 +454,12 @@ class ConcreteCommand(BaseCommand):
                 argv.extend(shquote(b) if level >= self.QUOTE_LEVEL else str(b) for b in a)
             else:
                 argv.append(shquote(a) if level >= self.QUOTE_LEVEL else str(a))
-        # if self.encoding:
-        #    argv = [a.encode(self.encoding) for a in argv if isinstance(a, six.string_types)]
+        # if self.custom_encoding:
+        #    argv = [a.encode(self.custom_encoding) for a in argv if isinstance(a, six.string_types)]
         return argv
 
-        
-        
+
+
 
 
 

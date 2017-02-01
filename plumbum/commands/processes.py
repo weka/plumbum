@@ -216,7 +216,7 @@ atexit.register(_shutdown_bg_threads)
 def run_proc(proc, retcode, timeout = None):
     """Waits for the given process to terminate, with the expected exit code
 
-    :param proc: a running Popen-like object
+    :param proc: a running Popen-like object, with all the expected methods.
 
     :param retcode: the expected return (exit) code of the process. It defaults to 0 (the
                     convention for success). If ``None``, the return code is ignored.
@@ -238,9 +238,9 @@ def run_proc(proc, retcode, timeout = None):
         stdout = six.b("")
     if not stderr:
         stderr = six.b("")
-    if getattr(proc, "encoding", None):
-        stdout = stdout.decode(proc.encoding, "ignore")
-        stderr = stderr.decode(proc.encoding, "ignore")
+    if getattr(proc, "custom_encoding", None):
+        stdout = stdout.decode(proc.custom_encoding, "ignore")
+        stderr = stderr.decode(proc.custom_encoding, "ignore")
 
     return _check_process(proc, retcode, timeout, stdout, stderr)
 
@@ -272,7 +272,7 @@ def iter_lines(proc, retcode = 0, timeout = None, linesize = -1, _iter_lines = _
     :returns: An iterator of (out, err) line tuples.
     """
 
-    encoding = getattr(proc, "encoding", None)
+    encoding = getattr(proc, "custom_encoding", None)
     if encoding:
         decode = lambda s: s.decode(encoding).rstrip()
     else:

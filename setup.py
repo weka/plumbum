@@ -6,6 +6,15 @@ try:
 except ImportError:
     from distutils.core import setup, Command
 
+# Fix for building on non-Windows systems
+import codecs
+try:
+    codecs.lookup('mbcs')
+except LookupError:
+    ascii = codecs.lookup('ascii')
+    func = lambda name, enc=ascii: {True: enc}.get(name=='mbcs')
+    codecs.register(func)
+
 HERE = os.path.dirname(__file__)
 exec(open(os.path.join(HERE, "plumbum", "version.py")).read())
 
@@ -48,7 +57,7 @@ setup(name = "plumbum",
     author = "Tomer Filiba",
     author_email = "tomerfiliba@gmail.com",
     license = "MIT",
-    url = "http://plumbum.readthedocs.org",
+    url = "https://plumbum.readthedocs.io",
     packages = ["plumbum", "plumbum.cli", "plumbum.commands", "plumbum.machines", "plumbum.path", "plumbum.fs", "plumbum.colorlib"],
     platforms = ["POSIX", "Windows"],
     provides = ["plumbum"],
@@ -69,6 +78,7 @@ setup(name = "plumbum",
         "Programming Language :: Python :: 3.3",
         "Programming Language :: Python :: 3.4",
         "Programming Language :: Python :: 3.5",
+        "Programming Language :: Python :: 3.6",
         "Topic :: Software Development :: Build Tools",
         "Topic :: System :: Systems Administration",
     ],

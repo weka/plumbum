@@ -121,7 +121,7 @@ class LocalCommand(ConcreteCommand):
 
     def __init__(self, executable, encoding = "auto"):
         ConcreteCommand.__init__(self, executable,
-            local.encoding if encoding == "auto" else encoding)
+            local.custom_encoding if encoding == "auto" else encoding)
 
     @property
     def machine(self):
@@ -148,13 +148,13 @@ class LocalMachine(CommandsProvider):
 
     * ``cwd`` - the local working directory
     * ``env`` - the local environment
-    * ``encoding`` - the local machine's default encoding (``sys.getfilesystemencoding()``)
+    * ``custom_encoding`` - the local machine's default encoding (``sys.getfilesystemencoding()``)
     """
 
     cwd = StaticProperty(LocalWorkdir)
     env = LocalEnv()
 
-    encoding = sys.getfilesystemencoding()
+    custom_encoding = sys.getfilesystemencoding()
     uname = platform.uname()[0]
 
     def __init__(self):
@@ -213,6 +213,14 @@ class LocalMachine(CommandsProvider):
                 raise TypeError("Cannot construct LocalPath from %r" % (p,))
             parts2.append(self.env.expanduser(str(p)))
         return LocalPath(os.path.join(*parts2))
+
+    def __contains__(self, cmd):
+        try:
+            self[cmd]
+        except CommandNotFound:
+            return False
+        else:
+            return True
 
     def __getitem__(self, cmd):
         """Returns a `Command` object representing the given program. ``cmd`` can be a string or
@@ -283,9 +291,9 @@ class LocalMachine(CommandsProvider):
         logger.debug("Running %r", argv)
         proc = IterablePopen(argv, executable = str(executable), stdin = stdin, stdout = stdout,
             stderr = stderr, cwd = str(cwd), env = env, machine = self,
-            encoding = self.encoding, **kwargs)  # bufsize = 4096
+            encoding = self.custom_encoding, **kwargs)  # bufsize = 4096
         proc._start_time = time.time()
-        proc.encoding = self.encoding
+        proc.custom_encoding = self.custom_encoding
         proc.argv = argv
         return proc
 
@@ -414,7 +422,7 @@ class LocalMachine(CommandsProvider):
         """A shorthand for :func:`as_user("root") <plumbum.machines.local.LocalMachine.as_user>`"""
         return self.as_user()
 
-    python = LocalCommand(sys.executable, encoding)
+    python = LocalCommand(sys.executable, custom_encoding)
     """A command that represents the current python interpreter (``sys.executable``)"""
 
 local = LocalMachine()
@@ -426,5 +434,5 @@ Attributes:
 
 * ``cwd`` - the local working directory
 * ``env`` - the local environment
-* ``encoding`` - the local machine's default encoding (``sys.getfilesystemencoding()``)
+* ``custom_encoding`` - the local machine's default encoding (``sys.getfilesystemencoding()``)
 """

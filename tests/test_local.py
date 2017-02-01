@@ -4,7 +4,7 @@ import os
 import sys
 import signal
 import time
-from plumbum import (local, LocalPath, FG, BG, TF, RETCODE, ERROUT,
+from plumbum import (local, LocalPath, FG, BG, TF, RETCODE, ERROUT, TEE,
                     CommandNotFound, ProcessExecutionError, ProcessTimedOut)
 from plumbum.lib import six, IS_WIN32
 from plumbum.fs.atomic import AtomicFile, AtomicCounterFile, PidFile
@@ -15,7 +15,9 @@ import plumbum
 from plumbum._testtools import (
     skip_without_chown,
     skip_without_tty,
-    skip_on_windows)
+    skip_on_windows,
+    xfail_on_pypy
+    )
 
 # This is a string since we are testing local paths
 SDIR = os.path.dirname(os.path.abspath(__file__))
@@ -300,6 +302,10 @@ class TestLocalMachine:
         os.chdir('../tests')
         assert local.cwd == os.getcwd()
 
+    def test_contains(self):
+        assert 'plumbum' in local.cwd / '..'
+        assert 'non_exist1N91' not in local.cwd / '..'
+
     @skip_on_windows
     def test_path(self):
         assert not (local.cwd / "../non_exist1N9").exists()
@@ -396,7 +402,7 @@ class TestLocalMachine:
         p = ls.popen(["-a"])
         out, _ = p.communicate()
         assert p.returncode == 0
-        assert "test_local.py" in out.decode(local.encoding).splitlines()
+        assert "test_local.py" in out.decode(local.custom_encoding).splitlines()
 
     def test_run(self):
         from plumbum.cmd import ls, grep
@@ -467,7 +473,15 @@ class TestLocalMachine:
         assert command & RETCODE == 0
         assert command_false & RETCODE == 1
 
+    @skip_on_windows
+    @pytest.mark.xfail(reason=
+        'This test randomly fails on Mac and PyPy on Travis, not sure why')
+    def test_tee_modifier(self, capfd):
+        from plumbum.cmd import echo
 
+        result = echo['This is fun'] & TEE
+        assert result[1] == 'This is fun\n'
+        assert 'This is fun\n' == capfd.readouterr()[0]
 
     def test_arg_expansion(self):
         from plumbum.cmd import ls
@@ -525,28 +539,35 @@ class TestLocalMachine:
         assert not dir.exists()
 
 
-    def test_read_write(self):
+    def test_read_write_str(self):
+        with local.tempdir() as tmp:
+            data = "hello world"
+            (tmp / "foo.txt").write(data)
+            assert (tmp / "foo.txt").read() == data
+
+    def test_read_write_unicode(self):
+        with local.tempdir() as tmp:
+            data = six.u("hello world")
+            (tmp / "foo.txt").write(data)
+            assert (tmp / "foo.txt").read() == data
+
+    def test_read_write_bin(self):
         with local.tempdir() as tmp:
             data = six.b("hello world")
             (tmp / "foo.txt").write(data)
-            assert (tmp / "foo.txt").read() == data
+            assert (tmp / "foo.txt").read(mode='rb') == data
 
     def test_links(self):
         with local.tempdir() as tmp:
             src = tmp / "foo.txt"
             dst1 = tmp / "bar.txt"
             dst2 = tmp / "spam.txt"
-            data = six.b("hello world")
+            data = "hello world"
             src.write(data)
             src.link(dst1)
             assert data == dst1.read()
             src.symlink(dst2)
             assert data == dst2.read()
-
-    @skip_on_windows
-    def test_as_user(self):
-        with local.as_root():
-            local["date"]()
 
     def test_list_processes(self):
         assert list(local.list_processes())
@@ -711,4 +732,11 @@ for _ in range(%s):
         with pytest.raises(ProcessExecutionError):
             (ls["--no-such-option"] | head)()
 
+    def test_pipeline_retcode(self):
+        "From PR #288"
+        from plumbum.cmd import echo, grep
+        print( (echo['one two three four'] | grep['two'] | grep['three'])(retcode=None))
+        print( (echo['one two three four'] | grep['five'] | grep['three'])(retcode=None))
+        print( (echo['one two three four'] | grep['two'] | grep['five'])(retcode=None))
+        print( (echo['one two three four'] | grep['six'] | grep['five'])(retcode=None))
 
