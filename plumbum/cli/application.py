@@ -308,15 +308,16 @@ class Application(object):
                 continue  # skip if overridden by command line arguments
 
             val = self._handle_argument(envval, swinfo.argtype, env)
-            envname = "$%s" % (env,)
+            name = swinfo.names[0]
+            name = ("--" if len(name) > 1 else "-") + name
             if swinfo.list:
                 # multiple values over environment variables are not supported,
                 # this will require some sort of escaping and separator convention
-                swfuncs[swinfo.func] = SwitchParseInfo(envname, ([val],), envindex)
+                swfuncs[swinfo.func] = SwitchParseInfo(name, ([val],), envindex)
             elif val is NotImplemented:
-                swfuncs[swinfo.func] = SwitchParseInfo(envname, (), envindex)
+                swfuncs[swinfo.func] = SwitchParseInfo(name, (), envindex)
             else:
-                swfuncs[swinfo.func] = SwitchParseInfo(envname, (val,), envindex)
+                swfuncs[swinfo.func] = SwitchParseInfo(name, (val,), envindex)
 
         return swfuncs, tailargs
 
