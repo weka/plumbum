@@ -393,13 +393,10 @@ class Set(Validator):
             raise TypeError("got unexpected keyword argument(s): %r" % (kwargs.keys(),))
         self.values = values
     def __repr__(self):
-        return "{%s}" % (", ".join(v if isinstance(v, str) else v.__name__ for v in self.values.values()))
-    def __call__(self, obj):
-        if not self.case_sensitive:
-            obj = obj.lower()
-        if obj not in self.values:
-            raise ValueError("Expected one of %r" % (list(self.values.values()),))
-        return self.values[obj]
+        return "{%s}" % (", ".join(
+            v if isinstance(v, str) else
+            v.__name__ if isinstance(v, type) else
+            repr(v) for v in self.values))
     def __call__(self, value, check_csv=True):
         if self.csv and check_csv:
             return [self(v.strip(), check_csv=False) for v in value.split(",")]
@@ -407,9 +404,10 @@ class Set(Validator):
             value = value.lower()
         for opt in self.values:
             if isinstance(opt, str):
-                if not self.case_sensitive:
-                    opt = opt.lower()
-                if opt == value:
+                if self.case_sensitive:
+                    if opt == value:
+                        return opt  # always return original value
+                elif opt.lower() == value:
                     return opt  # always return original value
                 continue
             try:
