@@ -34,7 +34,8 @@ def _check_process(proc, retcode, timeout, stdout, stderr):
 
 
 def _abort_process(proc, timeout):
-    proc.close()
+    if callable(getattr(proc, "close", None)):
+        proc.close()
     proc.stdin.close()
     proc.stdout.close()
     proc.stderr.close()
