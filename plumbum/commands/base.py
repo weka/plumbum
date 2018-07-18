@@ -255,8 +255,11 @@ class BoundEnvCommand(BaseCommand):
     def machine(self):
         return self.cmd.machine
     def popen(self, args = (), **kwargs):
-        with self.machine.env(**self.envvars):
-            return self.cmd.popen(args, **kwargs)
+        env = self.machine.env.getdict()
+        env.update(self.envvars)
+        env.update(kwargs.pop('env', {}))
+        env = dict((k, str(v)) for k, v in env.items())
+        return self.cmd.popen(args, env=env, **kwargs)
 
 class Pipeline(BaseCommand):
     __slots__ = ["srccmd", "dstcmd"]

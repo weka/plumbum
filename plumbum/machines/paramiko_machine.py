@@ -269,11 +269,13 @@ class ParamikoMachine(BaseRemoteMachine):
         return ShellSession(proc, self.encoding, isatty, connect_timeout)
 
     @_setdoc(BaseRemoteMachine)
-    def popen(self, args, stdin = None, stdout = None, stderr = None, new_session = False, cwd = None):
+    def popen(self, args, stdin = None, stdout = None, stderr = None, new_session = False, cwd = None, env = None):
         # new_session is ignored for ParamikoMachine
         argv = []
-        envdelta = self.env.getdelta()
         argv.extend(["cd", str(cwd or self.cwd), "&&"])
+        envdelta = self.env.getdelta()
+        if env:
+            envdelta.update(env)
         if envdelta:
             argv.append("env")
             argv.extend("%s=%s" % (k, shquote(v)) for k, v in envdelta.items())
