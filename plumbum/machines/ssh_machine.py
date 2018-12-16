@@ -118,21 +118,23 @@ class SshMachine(BaseRemoteMachine):
         return "ssh://%s" % (self._fqhost,)
 
     @_setdoc(BaseRemoteMachine)
-    def popen(self, args, ssh_opts = (), **kwargs):
+    def popen(self, args, ssh_opts = (), env = None, **kwargs):
         cmdline = []
         cmdline.extend(ssh_opts)
         cmdline.append(self._fqhost)
-        if args and hasattr(self, "env"):
-            envdelta = self.env.getdelta()
+        envdelta = self.env.getdelta() if hasattr(self, "env") else {}
+        if env:
+            envdelta.update(env)
+        if self.cwd:
             cmdline.extend(["cd", str(self.cwd), "&&"])
-            if envdelta:
-                cmdline.append("env")
-                cmdline.extend("%s=%s" % (k, shquote(v)) for k, v in envdelta.items())
-            if not isinstance(args, (tuple, list)):
-                args = [args]
-            if self._as_user_stack:
-                args, executable = self._as_user_stack[-1](args)
-            cmdline.extend(args)
+        if envdelta:
+            cmdline.append("env")
+            cmdline.extend("%s=%s" % (k, shquote(v)) for k, v in envdelta.items())
+        if not isinstance(args, (tuple, list)):
+            args = [args]
+        if self._as_user_stack:
+            args, executable = self._as_user_stack[-1](args)
+        cmdline.extend(args)
 
         return self._ssh_command[tuple(cmdline)].popen(ignore_user_stack=True, **kwargs)
 
