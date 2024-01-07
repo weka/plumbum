@@ -43,7 +43,7 @@ def shquote_list(seq):
 #===================================================================================================
 # Commands
 #===================================================================================================
-class BaseCommand(object):
+class BaseCommand:
     """Base of all command objects"""
 
     __slots__ = ["cwd", "env", "encoding", "__weakref__"]
@@ -227,7 +227,7 @@ class BoundCommand(BaseCommand):
         self.cmd = cmd
         self.args = list(args)
     def __repr__(self):
-        return "BoundCommand(%r, %r)" % (self.cmd, self.args)
+        return f"BoundCommand({self.cmd!r}, {self.args!r})"
     def _get_encoding(self):
         return self.cmd._get_encoding()
     def formulate(self, level = 0, args = ()):
@@ -236,7 +236,7 @@ class BoundCommand(BaseCommand):
     def machine(self):
         return self.cmd.machine
     def popen(self, args = (), **kwargs):
-        if isinstance(args, six.string_types):
+        if isinstance(args, str):
             args = [args, ]
         return self.cmd.popen(self.args + list(args), **kwargs)
 
@@ -246,7 +246,7 @@ class BoundEnvCommand(BaseCommand):
         self.cmd = cmd
         self.envvars = envvars
     def __repr__(self):
-        return "BoundEnvCommand(%r, %r)" % (self.cmd, self.envvars)
+        return f"BoundEnvCommand({self.cmd!r}, {self.envvars!r})"
     def _get_encoding(self):
         return self.cmd._get_encoding()
     def formulate(self, level = 0, args = ()):
@@ -258,7 +258,7 @@ class BoundEnvCommand(BaseCommand):
         env = self.machine.env.getdict()
         env.update(self.envvars)
         env.update(kwargs.pop('env', {}))
-        env = dict((k, str(v)) for k, v in env.items())
+        env = {k: str(v) for k, v in env.items()}
         return self.cmd.popen(args, env=env, **kwargs)
 
 class Pipeline(BaseCommand):
@@ -267,7 +267,7 @@ class Pipeline(BaseCommand):
         self.srccmd = srccmd
         self.dstcmd = dstcmd
     def __repr__(self):
-        return "Pipeline(%r, %r)" % (self.srccmd, self.dstcmd)
+        return f"Pipeline({self.srccmd!r}, {self.dstcmd!r})"
     def _get_encoding(self):
         return self.srccmd._get_encoding() or self.dstcmd._get_encoding()
     def formulate(self, level = 0, args = ()):
@@ -328,7 +328,7 @@ class BaseRedirection(BaseCommand):
     def _get_encoding(self):
         return self.cmd._get_encoding()
     def __repr__(self):
-        return "%s(%r, %r)" % (self.__class__.__name__, self.cmd, self.file)
+        return f"{self.__class__.__name__}({self.cmd!r}, {self.file!r})"
     def formulate(self, level = 0, args = ()):
         return self.cmd.formulate(level + 1, args) + [self.SYM, shquote(getattr(self.file, "name", self.file))]
     @property
@@ -339,8 +339,8 @@ class BaseRedirection(BaseCommand):
         from plumbum.machines.remote import RemotePath
 
         if self.KWARG in kwargs and kwargs[self.KWARG] not in (PIPE, None):
-            raise RedirectionError("%s is already redirected" % (self.KWARG,))
-        if isinstance(self.file, six.string_types + (LocalPath,)):
+            raise RedirectionError(f"{self.KWARG} is already redirected")
+        if isinstance(self.file, (str,) + (LocalPath,)):
             f = kwargs[self.KWARG] = open(str(self.file), self.MODE)
         elif isinstance(self.file, RemotePath):
             raise TypeError("Cannot redirect to/from remote paths")
@@ -395,7 +395,7 @@ class StdinDataRedirection(BaseCommand):
         return self.cmd._get_encoding()
 
     def formulate(self, level = 0, args = ()):
-        return ["echo %s" % (shquote(self.data),), "|", self.cmd.formulate(level + 1, args)]
+        return [f"echo {shquote(self.data)}", "|", self.cmd.formulate(level + 1, args)]
     @property
     def machine(self):
         return self.cmd.machine
@@ -429,7 +429,7 @@ class ConcreteCommand(BaseCommand):
         return str(self.executable)
         
     def __repr__(self):
-        return "{0}({1})".format(type(self).__name__, self.executable)        
+        return f"{type(self).__name__}({self.executable})"        
     
     def _get_encoding(self):
         return self.encoding

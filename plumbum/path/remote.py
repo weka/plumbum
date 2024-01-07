@@ -9,7 +9,7 @@ try: # Py3
 except ImportError:
     import urllib
 
-class StatRes(object):
+class StatRes:
     """POSIX-like stat result"""
     def __init__(self, tup):
         self._tup = tuple(tup)
@@ -58,10 +58,10 @@ class RemotePath(Path):
                 else:
                     normed.append(item)
         if windows:
-            self = super(RemotePath, cls).__new__(cls, "\\".join(normed))
+            self = super().__new__(cls, "\\".join(normed))
             self.CASE_SENSITIVE = False # On this object only
         else:
-            self = super(RemotePath, cls).__new__(cls, "/" + "/".join(normed))
+            self = super().__new__(cls, "/" + "/".join(normed))
             self.CASE_SENSITIVE = True
 
         self.remote = remote
@@ -201,7 +201,7 @@ class RemotePath(Path):
         if isinstance(dst, RemotePath):
             if dst.remote is not self.remote:
                 raise TypeError("dst points to a different remote machine")
-        elif not isinstance(dst, six.string_types):
+        elif not isinstance(dst, str):
             raise TypeError("dst must be a string or a RemotePath (to the same remote machine), "
                 "got %r" % (dst,))
         self.remote._path_move(self, dst)
@@ -211,15 +211,15 @@ class RemotePath(Path):
         if isinstance(dst, RemotePath):
             if dst.remote is not self.remote:
                 raise TypeError("dst points to a different remote machine")
-        elif not isinstance(dst, six.string_types):
+        elif not isinstance(dst, str):
             raise TypeError("dst must be a string or a RemotePath (to the same remote machine), "
                 "got %r" % (dst,))
         if override:
-            if isinstance(dst, six.string_types):
+            if isinstance(dst, str):
                 dst = RemotePath(self.remote, dst)
             dst.delete()
         else:
-            if isinstance(dst, six.string_types):
+            if isinstance(dst, str):
                 dst = RemotePath(self.remote, dst)
             if dst.exists():
                 raise TypeError("Override not specified and dst exists")
@@ -267,7 +267,7 @@ class RemotePath(Path):
         if isinstance(dst, RemotePath):
             if dst.remote is not self.remote:
                 raise TypeError("dst points to a different remote machine")
-        elif not isinstance(dst, six.string_types):
+        elif not isinstance(dst, str):
             raise TypeError("dst must be a string or a RemotePath (to the same remote machine), "
                 "got %r" % (dst,))
         self.remote._path_link(self, dst, False)
@@ -277,7 +277,7 @@ class RemotePath(Path):
         if isinstance(dst, RemotePath):
             if dst.remote is not self.remote:
                 raise TypeError("dst points to a different remote machine")
-        elif not isinstance(dst, six.string_types):
+        elif not isinstance(dst, str):
             raise TypeError("dst must be a string or a RemotePath (to the same remote machine), "
                 "got %r" % (dst,))
         self.remote._path_link(self, dst, True)
@@ -286,7 +286,7 @@ class RemotePath(Path):
 
     @_setdoc(Path)
     def as_uri(self, scheme = 'ssh'):
-        return '{0}://{1}{2}'.format(scheme, self.remote._fqhost, urllib.pathname2url(str(self)))
+        return f'{scheme}://{self.remote._fqhost}{urllib.pathname2url(str(self))}'
 
     @property
     @_setdoc(Path)
@@ -311,14 +311,14 @@ class RemoteWorkdir(RemotePath):
     """Remote working directory manipulator"""
 
     def __new__(cls, remote):
-        self = super(RemoteWorkdir, cls).__new__(cls, remote, remote._session.run("pwd")[1].strip())
+        self = super().__new__(cls, remote, remote._session.run("pwd")[1].strip())
         return self
     def __hash__(self):
         raise TypeError("unhashable type")
 
     def chdir(self, newdir):
         """Changes the current working directory to the given one"""
-        self.remote._session.run("cd %s" % (shquote(newdir),))
+        self.remote._session.run(f"cd {shquote(newdir)}")
         del self.remote._cwd
         return self.__class__(self.remote)
 

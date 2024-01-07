@@ -34,7 +34,6 @@ Verbose: True
 Include dirs: ['foo/bar', 'spam/eggs']
 Compiling: ('x.cpp', 'y.cpp', 'z.cpp')
 """
-from __future__ import print_function
 import logging
 from plumbum import cli
 

@@ -26,7 +26,7 @@ class EnvPathList(list):
         return self._pathsep.join(str(p) for p in self)
 
 
-class BaseEnv(object):
+class BaseEnv:
     """The base class of LocalEnv and RemoteEnv"""
     __slots__ = ["_curr", "_path", "_path_factory", "__weakref__"]
     CASE_SENSITIVE = True
@@ -119,7 +119,7 @@ class BaseEnv(object):
     def getdict(self):
         """Returns the environment as a real dictionary"""
         self._curr["PATH"] = self.path.join()
-        return dict((k, str(v)) for k, v in self._curr.items())
+        return {k: str(v) for k, v in self._curr.items()}
 
     @property
     def path(self):

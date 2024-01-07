@@ -26,7 +26,7 @@ class TestLocalPath:
 
     def test_name(self):
         name = self.longpath.name
-        assert isinstance(name, six.string_types)
+        assert isinstance(name, str)
         assert "file.txt" == str(name)
 
     def test_dirname(self):
@@ -67,7 +67,7 @@ class TestLocalPath:
     def test_chown(self):
         with local.tempdir() as dir:
             p = dir / "foo.txt"
-            p.write(six.b("hello"))
+            p.write(b"hello")
             assert p.uid == os.getuid()
             assert p.gid == os.getgid()
             p.chown(p.uid.name)
@@ -114,7 +114,7 @@ class TestLocalPath:
     def test_read_write(self):
         with local.tempdir() as dir:
             f = dir / "test.txt"
-            text = six.b('hello world\xd7\xa9\xd7\x9c\xd7\x95\xd7\x9d').decode("utf8")
+            text = b'hello world\xd7\xa9\xd7\x9c\xd7\x95\xd7\x9d'.decode("utf8")
             f.write(text, "utf8")
             text2 = f.read("utf8")
             assert text == text2
@@ -504,7 +504,7 @@ class TestLocalMachine:
         from plumbum.cmd import cat
         with local.tempdir() as dir:
             assert dir.is_dir()
-            data = six.b("hello world")
+            data = b"hello world"
             with open(str(dir / "test.txt"), "wb") as f:
                 f.write(data)
             with open(str(dir / "test.txt"), "rb") as f:
@@ -516,7 +516,7 @@ class TestLocalMachine:
         from plumbum.cmd import cat
         with local.tempdir() as dir:
             assert dir.is_dir()
-            data = six.b("hello world")
+            data = b"hello world"
             with open(dir / "test.txt", "wb") as f:
                 f.write(data)
             with open(dir / "test.txt", "rb") as f:
@@ -527,7 +527,7 @@ class TestLocalMachine:
 
     def test_read_write(self):
         with local.tempdir() as tmp:
-            data = six.b("hello world")
+            data = b"hello world"
             (tmp / "foo.txt").write(data)
             assert (tmp / "foo.txt").read() == data
 
@@ -536,7 +536,7 @@ class TestLocalMachine:
             src = tmp / "foo.txt"
             dst1 = tmp / "bar.txt"
             dst2 = tmp / "spam.txt"
-            data = six.b("hello world")
+            data = b"hello world"
             src.write(data)
             src.link(dst1)
             assert data == dst1.read()
@@ -594,10 +594,10 @@ class TestLocalMachine:
     def test_atomic_file(self):
         af1 = AtomicFile("tmp.txt")
         af2 = AtomicFile("tmp.txt")
-        af1.write_atomic(six.b("foo"))
-        af2.write_atomic(six.b("bar"))
-        assert af1.read_atomic() == six.b("bar")
-        assert af2.read_atomic() == six.b("bar")
+        af1.write_atomic(b"foo")
+        af2.write_atomic(b"bar")
+        assert af1.read_atomic() == b"bar"
+        assert af2.read_atomic() == b"bar"
         local.path("tmp.txt").delete()
 
     @skip_on_windows
@@ -645,10 +645,10 @@ except PidFileTaken:
 import time
 time.sleep(0.2)
 afc = AtomicCounterFile.open("counter")
-for _ in range(%s):
+for _ in range({}):
     print(afc.next())
     time.sleep(0.1)
-""" % (num_of_increments,)
+""".format(num_of_increments)
 
         procs = []
         for _ in range(num_of_procs):

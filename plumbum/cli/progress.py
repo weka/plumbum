@@ -2,7 +2,6 @@
 Progress bar
 ------------
 """
-from __future__ import print_function, division
 import warnings
 from abc import abstractmethod
 import datetime
@@ -97,7 +96,7 @@ class ProgressBase(six.ABC):
             return "Starting...                         "
         else:
             elapsed_time, time_remaining = list(map(str,self.time_remaining()))
-            return "{0} completed, {1} remaining".format(elapsed_time.split('.')[0],
+            return "{} completed, {} remaining".format(elapsed_time.split('.')[0],
                                                        time_remaining.split('.')[0])
 
     @abstractmethod
@@ -119,7 +118,7 @@ class ProgressBase(six.ABC):
 class Progress(ProgressBase):
 
     def start(self):
-        super(Progress, self).start()
+        super().start()
         self.display()
 
     def done(self):
@@ -135,20 +134,20 @@ class Progress(ProgressBase):
         percent = max(self.value,0)/self.length
         width = get_terminal_size(default=(0,0))[0]
         ending = ' ' + (self.str_time_remaining()
-            if self.timer else '{0} of {1} complete'.format(self.value, self.length))
+            if self.timer else f'{self.value} of {self.length} complete')
         if width - len(ending) < 10 or self.has_output:
             self.width = 0
             if self.timer:
-                return "{0:g}% complete: {1}".format(100*percent, self.str_time_remaining())
+                return f"{100*percent:g}% complete: {self.str_time_remaining()}"
             else:
-                return "{0:g}% complete".format(100*percent)
+                return f"{100*percent:g}% complete"
 
         else:
             self.width = width - len(ending) - 2 - 1
             nstars = int(percent*self.width)
             pbar = '[' + '*'*nstars + ' '*(self.width-nstars) + ']' + ending
 
-        str_percent = ' {0:.0f}% '.format(100*percent)
+        str_percent = f' {100*percent:.0f}% '
 
         return pbar[:self.width//2 - 2] + str_percent + pbar[self.width//2+len(str_percent) - 2:]
 
@@ -176,7 +175,7 @@ class ProgressIPy(ProgressBase): # pragma: no cover
             except ImportError: # Support IPython < 4.0
                 from IPython.html.widgets import IntProgress, HTML, HBox
 
-        super(ProgressIPy, self).__init__(*args, **kargs)
+        super().__init__(*args, **kargs)
         self.prog = IntProgress(max=self.length)
         self._label = HTML()
         self._box = HBox((self.prog, self._label))
@@ -184,7 +183,7 @@ class ProgressIPy(ProgressBase): # pragma: no cover
     def start(self):
         from IPython.display import display
         display(self._box)
-        super(ProgressIPy, self).start()
+        super().start()
 
     @property
     def value(self):
@@ -194,7 +193,7 @@ class ProgressIPy(ProgressBase): # pragma: no cover
     def value(self, val):
         self._value = val
         self.prog.value = max(val, 0)
-        self.prog.description = "{0:.2f}%".format(100*self.value / self.length)
+        self.prog.description = f"{100*self.value / self.length:.2f}%"
         if self.timer and val > 0:
             self._label.value = self.HTMLBOX.format(self.str_time_remaining())
 

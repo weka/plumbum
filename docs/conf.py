@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 #
 # Plumbum Shell Combinators documentation build configuration file, created by
 # sphinx-quickstart on Sun Apr 29 16:24:32 2012.
@@ -41,8 +40,8 @@ source_suffix = '.rst'
 master_doc = 'index'
 
 # General information about the project.
-project = u'Plumbum Shell Combinators'
-copyright = u'%d, Tomer Filiba, licensed under Attribution-ShareAlike 3.0' % (time.gmtime().tm_year,)
+project = 'Plumbum Shell Combinators'
+copyright = '%d, Tomer Filiba, licensed under Attribution-ShareAlike 3.0' % (time.gmtime().tm_year,)
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -188,8 +187,8 @@ latex_elements = {
 # Grouping the document tree into LaTeX files. List of tuples
 # (source start file, target name, title, author, documentclass [howto/manual]).
 latex_documents = [
-  ('index', 'PlumbumShellCombinators.tex', u'Plumbum Shell Combinators Documentation',
-   u'Tomer Filiba', 'manual'),
+  ('index', 'PlumbumShellCombinators.tex', 'Plumbum Shell Combinators Documentation',
+   'Tomer Filiba', 'manual'),
 ]
 
 # The name of an image file (relative to this directory) to place at the top of
@@ -218,8 +217,8 @@ latex_documents = [
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    ('index', 'plumbumshellcombinators', u'Plumbum Shell Combinators Documentation',
-     [u'Tomer Filiba'], 1)
+    ('index', 'plumbumshellcombinators', 'Plumbum Shell Combinators Documentation',
+     ['Tomer Filiba'], 1)
 ]
 
 # If true, show URL addresses after external links.
@@ -232,8 +231,8 @@ man_pages = [
 # (source start file, target name, title, author,
 #  dir menu entry, description, category)
 texinfo_documents = [
-  ('index', 'PlumbumShellCombinators', u'Plumbum Shell Combinators Documentation',
-   u'Tomer Filiba', 'PlumbumShellCombinators', 'One line description of project.',
+  ('index', 'PlumbumShellCombinators', 'Plumbum Shell Combinators Documentation',
+   'Tomer Filiba', 'PlumbumShellCombinators', 'One line description of project.',
    'Miscellaneous'),
 ]
 

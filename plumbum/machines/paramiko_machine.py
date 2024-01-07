@@ -17,7 +17,7 @@ try:
     # Sigh... we need to gracefully-import paramiko for Sphinx builds, etc
     import paramiko
 except ImportError:
-    class paramiko(object):
+    class paramiko:
         def __nonzero__(self):
             return False
         __bool__ = __nonzero__
@@ -62,7 +62,7 @@ class ParamikoPopen(PopenAddons):
         # possible way to obtain pid:
         # "(cmd ; echo $?) & echo ?!"
         # and then client.exec_command("kill -9 %s" % (pid,))
-        raise EnvironmentError("Cannot kill remote processes, we don't have their PIDs")
+        raise OSError("Cannot kill remote processes, we don't have their PIDs")
     terminate = kill
     def send_signal(self, sig):
         raise NotImplementedError()
@@ -76,7 +76,7 @@ class ParamikoPopen(PopenAddons):
             if infile:
                 try:
                     line = infile.readline()
-                except (ValueError, IOError):
+                except (ValueError, OSError):
                     line = None
                 logger.debug("communicate: %r", line)
                 if not line:
@@ -99,8 +99,8 @@ class ParamikoPopen(PopenAddons):
             else:
                 coll.append(line)
         self.wait()
-        stdout = six.b("").join(six.b(s) for s in stdout)
-        stderr = six.b("").join(six.b(s) for s in stderr)
+        stdout = b"".join(six.b(s) for s in stdout)
+        stderr = b"".join(six.b(s) for s in stderr)
         return stdout, stderr
 
     def iter_lines(self, timeout=None, **kwargs):
@@ -170,7 +170,7 @@ class ParamikoMachine(BaseRemoteMachine):
         self.host = host
         kwargs = {'hostname': host}
         if user:
-            self._fqhost = "%s@%s" % (user, host)
+            self._fqhost = f"{user}@{host}"
             kwargs['username'] = user
         else:
             self._fqhost = host
@@ -231,7 +231,7 @@ class ParamikoMachine(BaseRemoteMachine):
             self._sftp = None
 
     def __str__(self):
-        return "paramiko://%s" % (self._fqhost,)
+        return f"paramiko://{self._fqhost}"
 
     def close(self):
         BaseRemoteMachine.close(self)
@@ -278,7 +278,7 @@ class ParamikoMachine(BaseRemoteMachine):
             envdelta.update(env)
         if envdelta:
             argv.append("env")
-            argv.extend("%s=%s" % (k, shquote(v)) for k, v in envdelta.items())
+            argv.extend(f"{k}={shquote(v)}" for k, v in envdelta.items())
         args = args.formulate()
         if self._as_user_stack:
             args, executable = self._as_user_stack[-1](args)
@@ -293,11 +293,11 @@ class ParamikoMachine(BaseRemoteMachine):
     @_setdoc(BaseRemoteMachine)
     def download(self, src, dst):
         if isinstance(src, LocalPath):
-            raise TypeError("src of download cannot be %r" % (src,))
+            raise TypeError(f"src of download cannot be {src!r}")
         if isinstance(src, RemotePath) and src.remote != self:
-            raise TypeError("src %r points to a different remote machine" % (src,))
+            raise TypeError(f"src {src!r} points to a different remote machine")
         if isinstance(dst, RemotePath):
-            raise TypeError("dst of download cannot be %r" % (dst,))
+            raise TypeError(f"dst of download cannot be {dst!r}")
         return self._download(src if isinstance(src, RemotePath) else self.path(src),
             dst if isinstance(dst, LocalPath) else LocalPath(dst))
 
@@ -315,11 +315,11 @@ class ParamikoMachine(BaseRemoteMachine):
     @_setdoc(BaseRemoteMachine)
     def upload(self, src, dst):
         if isinstance(src, RemotePath):
-            raise TypeError("src of upload cannot be %r" % (src,))
+            raise TypeError(f"src of upload cannot be {src!r}")
         if isinstance(dst, LocalPath):
-            raise TypeError("dst of upload cannot be %r" % (dst,))
+            raise TypeError(f"dst of upload cannot be {dst!r}")
         if isinstance(dst, RemotePath) and dst.remote != self:
-            raise TypeError("dst %r points to a different remote machine" % (dst,))
+            raise TypeError(f"dst {dst!r} points to a different remote machine")
         return self._upload(src if isinstance(src, LocalPath) else LocalPath(src),
             dst if isinstance(dst, RemotePath) else self.path(dst))
 
@@ -373,7 +373,7 @@ class ParamikoMachine(BaseRemoteMachine):
     def _path_stat(self, fn):
         try:
             st = self.sftp.stat(str(fn))
-        except IOError as e:
+        except OSError as e:
             if e.errno == errno.ENOENT:
                 return None
             raise OSError(e.errno)
@@ -388,7 +388,7 @@ class ParamikoMachine(BaseRemoteMachine):
     def _path_lstat(self, fn):
         try:
             st = self.sftp.lstat(str(fn))
-        except IOError as e:
+        except OSError as e:
             if e.errno == errno.ENOENT:
                 return None
             raise OSError(e.errno)
@@ -409,18 +409,18 @@ class ParamikoMachine(BaseRemoteMachine):
 # Make paramiko.Channel adhere to the socket protocol, namely, send and recv should fail
 # when the socket has been closed
 ###################################################################################################
-class SocketCompatibleChannel(object):
+class SocketCompatibleChannel:
     def __init__(self, chan):
         self._chan = chan
     def __getattr__(self, name):
         return getattr(self._chan, name)
     def send(self, s):
         if self._chan.closed:
-            raise socket.error(errno.EBADF, 'Bad file descriptor')
+            raise OSError(errno.EBADF, 'Bad file descriptor')
         return self._chan.send(s)
     def recv(self, count):
         if self._chan.closed:
-            raise socket.error(errno.EBADF, 'Bad file descriptor')
+            raise OSError(errno.EBADF, 'Bad file descriptor')
         return self._chan.recv(count)
 
 

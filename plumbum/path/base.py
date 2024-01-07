@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 import itertools
 import operator
 import os
@@ -29,7 +27,7 @@ class Path(str, six.ABC):
     CASE_SENSITIVE = True
 
     def __repr__(self):
-        return "<%s %s>" % (self.__class__.__name__, str(self))
+        return f"<{self.__class__.__name__} {str(self)}>"
     def __div__(self, other):
         """Joins two paths"""
         return self.join(other)
@@ -101,8 +99,7 @@ class Path(str, six.ABC):
             if filter(p):
                 yield p
             if p.is_dir() and dir_filter(p):
-                for p2 in p.walk(filter, dir_filter):
-                    yield p2
+                yield from p.walk(filter, dir_filter)
 
     @abstractproperty
     def name(self):
@@ -350,7 +347,7 @@ class Path(str, six.ABC):
 
 
 
-class RelativePath(object):
+class RelativePath:
     """
     Relative paths are the "delta" required to get from one path to another.
     Note that relative path do not point at anything, and thus are not paths.
@@ -371,7 +368,7 @@ class RelativePath(object):
     def __getitem__(self, index):
         return self.parts[index]
     def __repr__(self):
-        return "RelativePath(%r)" % (self.parts,)
+        return f"RelativePath({self.parts!r})"
 
     def __eq__(self, other):
         return str(self) == str(other)

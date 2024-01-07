@@ -63,7 +63,7 @@ class TestRemotePath:
 
     def test_name(self):
         name = RemotePath(self._connect(), "/some/long/path/to/file.txt").name
-        assert isinstance(name, six.string_types)
+        assert isinstance(name, str)
         assert "file.txt" == str(name)
 
     def test_dirname(self):
@@ -107,14 +107,14 @@ class TestRemotePath:
         with self._connect() as rem:
             with rem.tempdir() as dir:
                 p = dir / "foo.txt"
-                p.write(six.b("hello"))
+                p.write(b"hello")
                 # because we're connected to localhost, we expect UID and GID to be the same
                 assert p.uid == os.getuid()
                 assert p.gid == os.getgid()
                 p.chown(p.uid.name)
                 assert p.uid == os.getuid()
 
-class BaseRemoteMachineTest(object):
+class BaseRemoteMachineTest:
     TUNNEL_PROG = r"""import sys, socket
 s = socket.socket()
 s.bind(("", 0))
@@ -190,7 +190,7 @@ s.close()
         with self._connect() as rem:
             with rem.tempdir() as dir:
                 assert dir.is_dir()
-                data = six.b("hello world")
+                data = b"hello world"
                 (dir / "foo.txt").write(data)
                 assert (dir / "foo.txt").read() == data
 
@@ -250,7 +250,7 @@ class TestRemoteMachine(BaseRemoteMachineTest):
             with rem.tunnel(12222, port) as tun:
                 s = socket.socket()
                 s.connect(("localhost", 12222))
-                s.send(six.b("world"))
+                s.send(b"world")
                 data = s.recv(100)
                 s.close()
 

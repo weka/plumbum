@@ -104,11 +104,11 @@ class ProcessExecutionError(EnvironmentError):
     def __str__(self):
         stdout = "\n         | ".join(str(self.stdout).splitlines())
         stderr = "\n         | ".join(str(self.stderr).splitlines())
-        lines = ["Command line: %r" % (self.argv,), "Exit code: %s" % (self.retcode), "Machine: %s" % (self.machine,)]
+        lines = [f"Command line: {self.argv!r}", "Exit code: %s" % (self.retcode), f"Machine: {self.machine}"]
         if stdout:
-            lines.append("Stdout:  | %s" % (stdout,))
+            lines.append(f"Stdout:  | {stdout}")
         if stderr:
-            lines.append("Stderr:  | %s" % (stderr,))
+            lines.append(f"Stderr:  | {stderr}")
         return "\n".join(lines)
 
 class ProcessTimedOut(Exception):
@@ -142,7 +142,7 @@ class CommandNotFound(AttributeError):
 #===================================================================================================
 # Timeout thread
 #===================================================================================================
-class MinHeap(object):
+class MinHeap:
     def __init__(self, items = ()):
         self._items = list(items)
         heapq.heapify(self._items)
@@ -185,7 +185,7 @@ def _timeout_thread_func():
                     if proc.poll() is None:
                         proc.kill()
                         proc._timed_out = True
-                except EnvironmentError:
+                except OSError:
                     pass
     except Exception:
         if _shutting_down:
@@ -236,9 +236,9 @@ def run_proc(proc, retcode, timeout = None):
     stdout, stderr = proc.communicate()
     proc._end_time = time.time()
     if not stdout:
-        stdout = six.b("")
+        stdout = b""
     if not stderr:
-        stderr = six.b("")
+        stderr = b""
     if getattr(proc, "encoding", None):
         stdout = stdout.decode(proc.encoding, "ignore")
         stderr = stderr.decode(proc.encoding, "ignore")

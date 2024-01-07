@@ -36,7 +36,7 @@ class Geet(cli.Application):
 
     def cleanup(self, retcode):
         self.cleanups.append(1)
-        print("geet cleaning up with rc = %s" % (retcode,))
+        print(f"geet cleaning up with rc = {retcode}")
 
 @Geet.subcommand("add")
 class GeetAdd(cli.Application):
@@ -55,7 +55,7 @@ class GeetCommit(cli.Application):
 
     def cleanup(self, retcode):
         self.parent.cleanups.append(2)
-        print("geet commit cleaning up with rc = %s" % (retcode,))
+        print(f"geet commit cleaning up with rc = {retcode}")
 
 class Sample(cli.Application):
     foo = cli.SwitchAttr("--foo")

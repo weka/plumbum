@@ -1,6 +1,6 @@
 import os
 import inspect
-from collections import MutableMapping
+from collections.abc import MutableMapping
 
 
 NO_DEFAULT = object()
@@ -37,7 +37,7 @@ class TypedEnv(MutableMapping):
 
     __slots__ = ["_env", "_defined_keys"]
 
-    class _BaseVar(object):
+    class _BaseVar:
 
         def __init__(self, name, default=NO_DEFAULT):
             self.names = tuple(name) if isinstance(name, (tuple, list)) else (name,)
@@ -66,7 +66,7 @@ class TypedEnv(MutableMapping):
         def convert(self, s):
             s = s.lower()
             if s not in ("yes", "no", "true", "false", "1", "0"):
-                raise ValueError("Unrecognized boolean value: %r" % (s,))
+                raise ValueError(f"Unrecognized boolean value: {s!r}")
             return s in ("yes", "true", "1")
 
         def __set__(self, instance, value):
@@ -130,7 +130,7 @@ class TypedEnv(MutableMapping):
         try:
             return self._raw_get(name)
         except KeyError:
-            raise AttributeError("%s has no attribute %r" % (self.__class__, name))
+            raise AttributeError(f"{self.__class__} has no attribute {name!r}")
 
     def __getitem__(self, key):
         return getattr(self, key)  # delegate through the descriptors

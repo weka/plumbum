@@ -57,7 +57,7 @@ setup(name = "plumbum",
                 'docs':PyDocs},
     # use_2to3 = False,
     # zip_safe = True,
-    long_description = open(os.path.join(HERE, "README.rst"), "r").read(),
+    long_description = open(os.path.join(HERE, "README.rst")).read(),
     classifiers = [
         "Development Status :: 5 - Production/Stable",
         "License :: OSI Approved :: MIT License",

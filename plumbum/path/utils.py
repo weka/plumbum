@@ -13,12 +13,12 @@ def delete(*paths):
     for p in paths:
         if isinstance(p, Path):
             p.delete()
-        elif isinstance(p, six.string_types):
+        elif isinstance(p, str):
             local.path(p).delete()
         elif hasattr(p, "__iter__"):
             delete(*p)
         else:
-            raise TypeError("Cannot delete %r" % (p,))
+            raise TypeError(f"Cannot delete {p!r}")
 
 def _move(src, dst):
     ret = copy(src, dst)
@@ -40,7 +40,7 @@ def move(src, dst):
         if not dst.exists():
             dst.mkdir()
         elif not dst.is_dir():
-            raise ValueError("When using multiple sources, dst %r must be a directory" % (dst,))
+            raise ValueError(f"When using multiple sources, dst {dst!r} must be a directory")
         for src2 in src:
             move(src2, dst)
         return dst
@@ -75,7 +75,7 @@ def copy(src, dst):
         if not dst.exists():
             dst.mkdir()
         elif not dst.is_dir():
-            raise ValueError("When using multiple sources, dst %r must be a directory" % (dst,))
+            raise ValueError(f"When using multiple sources, dst {dst!r} must be a directory")
         for src2 in src:
             copy(src2, dst)
         return dst

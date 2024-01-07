@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-from __future__ import print_function, unicode_literals
 
 from plumbum.cmd import pdflatex, convert
 from plumbum import local, cli, FG

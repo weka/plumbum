@@ -9,7 +9,7 @@ from plumbum.commands.base import AppendingStdoutRedirection, StdoutRedirection
 from plumbum.lib import read_fd_decode_safely
 
 
-class Future(object):
+class Future:
     """Represents a "future result" of a running process. It basically wraps a ``Popen``
     object and the expected exit code, and provides poll(), wait(), returncode, stdout,
     and stderr.
@@ -22,7 +22,7 @@ class Future(object):
         self._stdout = None
         self._stderr = None
     def __repr__(self):
-        return "<Future %r (%s)>" % (self.proc.argv, self._returncode if self.ready() else "running",)
+        return "<Future {!r} ({})>".format(self.proc.argv, self._returncode if self.ready() else "running")
     def poll(self):
         """Polls the underlying process for termination; returns ``False`` if still running,
         or ``True`` if terminated"""
@@ -58,7 +58,7 @@ class Future(object):
 #===================================================================================================
 
 
-class ExecutionModifier(object):
+class ExecutionModifier:
     __slots__ = ("__weakref__",)
 
     def __repr__(self):
@@ -72,8 +72,8 @@ class ExecutionModifier(object):
             for prop in slots_list:
                 if prop[0] != '_':
                     slots[prop] = getattr(self, prop)
-        mystrs = ("{0} = {1}".format(name, slots[name]) for name in slots)
-        return "{0}({1})".format(self.__class__.__name__, ", ".join(mystrs))
+        mystrs = (f"{name} = {slots[name]}" for name in slots)
+        return "{}({})".format(self.__class__.__name__, ", ".join(mystrs))
 
     @classmethod
     def __call__(cls, *args, **kwargs):

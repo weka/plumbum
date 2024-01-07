@@ -9,7 +9,7 @@ from plumbum.path.local import LocalPath
 from plumbum.path.remote import RemotePath
 
 
-class SshTunnel(object):
+class SshTunnel:
     """An object representing an SSH tunnel (created by
     :func:`SshMachine.tunnel <plumbum.machines.remote.SshMachine.tunnel>`)"""
     __slots__ = ["_session", "__weakref__"]
@@ -17,7 +17,7 @@ class SshTunnel(object):
         self._session = session
     def __repr__(self):
         if self._session.alive():
-            return "<SshTunnel %s>" % (self._session.proc,)
+            return f"<SshTunnel {self._session.proc}>"
         else:
             return "<SshTunnel (defunct)>"
     def __enter__(self):
@@ -97,7 +97,7 @@ class SshMachine(BaseRemoteMachine):
             scp_args.extend(['-F', config_file])
 
         if user:
-            self._fqhost = "%s@%s" % (user, host)
+            self._fqhost = f"{user}@{host}"
         else:
             self._fqhost = host
         if port:
@@ -115,7 +115,7 @@ class SshMachine(BaseRemoteMachine):
             new_session = new_session)
 
     def __str__(self):
-        return "ssh://%s" % (self._fqhost,)
+        return f"ssh://{self._fqhost}"
 
     @_setdoc(BaseRemoteMachine)
     def popen(self, args, ssh_opts = (), env = None, **kwargs):
@@ -129,7 +129,7 @@ class SshMachine(BaseRemoteMachine):
             cmdline.extend(["cd", str(self.cwd), "&&"])
         if envdelta:
             cmdline.append("env")
-            cmdline.extend("%s=%s" % (k, shquote(v)) for k, v in envdelta.items())
+            cmdline.extend(f"{k}={shquote(v)}" for k, v in envdelta.items())
         if not isinstance(args, (tuple, list)):
             args = [args]
         if self._as_user_stack:
@@ -231,7 +231,7 @@ class SshMachine(BaseRemoteMachine):
                 sock.connect(("localhost", 1234))
                 # sock is now tunneled to megazord:5678
         """
-        ssh_opts = ["-L", "[%s]:%s:[%s]:%s" % (lhost, lport, dhost, dport)]
+        ssh_opts = ["-L", f"[{lhost}]:{lport}:[{dhost}]:{dport}"]
         proc = self.popen((), ssh_opts = ssh_opts, new_session = True)
         return SshTunnel(ShellSession(proc, self.encoding, connect_timeout = self.connect_timeout))
 
@@ -245,28 +245,28 @@ class SshMachine(BaseRemoteMachine):
     @_setdoc(BaseRemoteMachine)
     def download(self, src, dst):
         if isinstance(src, LocalPath):
-            raise TypeError("src of download cannot be %r" % (src,))
+            raise TypeError(f"src of download cannot be {src!r}")
         if isinstance(src, RemotePath) and src.remote != self:
-            raise TypeError("src %r points to a different remote machine" % (src,))
+            raise TypeError(f"src {src!r} points to a different remote machine")
         if isinstance(dst, RemotePath):
-            raise TypeError("dst of download cannot be %r" % (dst,))
+            raise TypeError(f"dst of download cannot be {dst!r}")
         if IS_WIN32:
             src = self._translate_drive_letter(src)
             dst = self._translate_drive_letter(dst)
-        self._scp_command("%s:%s" % (self._fqhost, shquote(src)), dst)
+        self._scp_command(f"{self._fqhost}:{shquote(src)}", dst)
 
     @_setdoc(BaseRemoteMachine)
     def upload(self, src, dst):
         if isinstance(src, RemotePath):
-            raise TypeError("src of upload cannot be %r" % (src,))
+            raise TypeError(f"src of upload cannot be {src!r}")
         if isinstance(dst, LocalPath):
-            raise TypeError("dst of upload cannot be %r" % (dst,))
+            raise TypeError(f"dst of upload cannot be {dst!r}")
         if isinstance(dst, RemotePath) and dst.remote != self:
-            raise TypeError("dst %r points to a different remote machine" % (dst,))
+            raise TypeError(f"dst {dst!r} points to a different remote machine")
         if IS_WIN32:
             src = self._translate_drive_letter(src)
             dst = self._translate_drive_letter(dst)
-        self._scp_command(src, "%s:%s" % (self._fqhost, shquote(dst)))
+        self._scp_command(src, f"{self._fqhost}:{shquote(dst)}")
 
 
 class PuttyMachine(SshMachine):
@@ -295,7 +295,7 @@ class PuttyMachine(SshMachine):
             connect_timeout = connect_timeout, new_session = new_session)
 
     def __str__(self):
-        return "putty-ssh://%s" % (self._fqhost,)
+        return f"putty-ssh://{self._fqhost}"
 
     def _translate_drive_letter(self, path):
         # pscp takes care of windows paths automatically

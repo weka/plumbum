@@ -31,15 +31,14 @@ shell_logger = logging.getLogger("plumbum.shell")
 #===================================================================================================
 # Shell Session Popen
 #===================================================================================================
-class MarkedPipe(object):
+class MarkedPipe:
     """A pipe-like object from which you can read lines; the pipe will return report EOF (the
     empty string) when a special marker is detected"""
     __slots__ = ["pipe", "marker", "__weakref__"]
     def __init__(self, pipe, marker):
         self.pipe = pipe
         self.marker = marker
-        if six.PY3:
-            self.marker = six.bytes(self.marker, "ascii")
+        self.marker = six.bytes(self.marker, "ascii")
     def close(self):
         """'Closes' the marked pipe; following calls to ``readline`` will return """""
         # consume everything
@@ -50,13 +49,13 @@ class MarkedPipe(object):
         """Reads the next line from the pipe; returns "" when the special marker is reached.
         Raises ``EOFError`` if the underlying pipe has closed"""
         if self.pipe is None:
-            return six.b("")
+            return b""
         line = self.pipe.readline()
         if not line:
             raise EOFError()
         if line.strip() == self.marker:
             self.pipe = None
-            line = six.b("")
+            line = b""
         return line
 
 
@@ -131,12 +130,12 @@ class SessionPopen(PopenAddons):
         except (IndexError, ValueError):
             self.returncode = "Unknown"
         self._done = True
-        stdout = six.b("").join(stdout)
-        stderr = six.b("").join(stderr)
+        stdout = b"".join(stdout)
+        stderr = b"".join(stderr)
         return stdout, stderr
 
 
-class ShellSession(object):
+class ShellSession:
     """An abstraction layer over *shell sessions*. A shell session is the execution of an
     interactive shell (``/bin/sh`` or something compatible), over which you may run commands
     (sent over stdin). The output of is then read from stdout and stderr. Shell sessions are
@@ -190,10 +189,10 @@ class ShellSession(object):
         if not self.alive():
             return
         try:
-            self.proc.stdin.write(six.b("\nexit\n\n\nexit\n\n"))
+            self.proc.stdin.write(b"\nexit\n\n\nexit\n\n")
             self.proc.stdin.flush()
             time.sleep(0.05)
-        except (ValueError, EnvironmentError):
+        except (ValueError, OSError):
             pass
         for p in [self.proc.stdin, self.proc.stdout, self.proc.stderr]:
             try:
@@ -202,7 +201,7 @@ class ShellSession(object):
                 pass
         try:
             self.proc.kill()
-        except EnvironmentError:
+        except OSError:
             pass
         self.proc = None
 
@@ -223,18 +222,18 @@ class ShellSession(object):
             full_cmd = cmd.formulate(1)
         else:
             full_cmd = cmd
-        marker = "--.END%s.--" % (time.time() * random.random(),)
+        marker = f"--.END{time.time() * random.random()}.--"
         if full_cmd.strip():
             full_cmd += " ; "
         else:
             full_cmd = "true ; "
-        full_cmd += "echo $? ; echo '%s'" % (marker,)
+        full_cmd += f"echo $? ; echo '{marker}'"
         if not self.isatty:
-            full_cmd += " ; echo '%s' 1>&2" % (marker,)
+            full_cmd += f" ; echo '{marker}' 1>&2"
         if self.encoding:
             full_cmd = full_cmd.encode(self.encoding)
         shell_logger.debug("Running %r", full_cmd)
-        self.proc.stdin.write(full_cmd + six.b("\n"))
+        self.proc.stdin.write(full_cmd + b"\n")
         self.proc.stdin.flush()
         self._current = SessionPopen(self.proc, full_cmd, self.isatty, self.proc.stdin,
             MarkedPipe(self.proc.stdout, marker), MarkedPipe(self.proc.stderr, marker),
