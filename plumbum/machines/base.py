@@ -2,7 +2,7 @@ from plumbum.commands.processes import CommandNotFound
 from plumbum.commands.processes import ProcessExecutionError
 from plumbum.commands.processes import ProcessTimedOut
 
-class PopenAddons(object):
+class PopenAddons:
     """This adds a verify to popen objects to that the correct command is attributed when
     an error is thrown."""
 
@@ -11,7 +11,7 @@ class PopenAddons(object):
         machine = getattr(self, "machine", None)
         argv = getattr(self, "argv", None)
         if getattr(self, "_timed_out", False):
-            raise ProcessTimedOut("Process did not terminate within %s seconds" % (timeout,), argv, machine)
+            raise ProcessTimedOut(f"Process did not terminate within {timeout} seconds", argv, machine)
 
         if retcode is not None:
             if hasattr(retcode, "__contains__"):
@@ -21,7 +21,7 @@ class PopenAddons(object):
                 raise ProcessExecutionError(argv, self.returncode, stdout, stderr, machine)
 
 
-class BaseMachine(object):
+class BaseMachine:
     """This is a base class for other machines. It contains common code to
     all machines in Plumbum."""
 

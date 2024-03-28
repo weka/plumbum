@@ -3,7 +3,6 @@ Terminal-related utilities
 --------------------------
 """
 
-from __future__ import division, print_function, absolute_import
 import sys
 import os
 from plumbum import local
@@ -87,7 +86,7 @@ def choose(question, options, default = None):
         sys.stdout.write("(%d) %s\n" % (i, text))
     if default is not None:
         if defindex is None:
-            msg = "Choice [%s]: " % (default,)
+            msg = f"Choice [{default}]: "
         else:
             msg = "Choice [%d]: " % (defindex,)
     else:
@@ -122,7 +121,7 @@ def prompt(question, type = int, default = NotImplemented, validator = lambda va
     """
     question = question.rstrip(" \t:")
     if default is not NotImplemented:
-        question += " [%s]" % (default,)
+        question += f" [{default}]"
     question += ": "
     while True:
         try:
@@ -138,12 +137,12 @@ def prompt(question, type = int, default = NotImplemented, validator = lambda va
         try:
             ans = type(ans)
         except (TypeError, ValueError) as ex:
-            sys.stdout.write("Invalid value (%s), please try again\n" % (ex,))
+            sys.stdout.write(f"Invalid value ({ex}), please try again\n")
             continue
         try:
             valid = validator(ans)
         except ValueError as ex:
-            sys.stdout.write("%s, please try again\n" % (ex,))
+            sys.stdout.write(f"{ex}, please try again\n")
             continue
         if not valid:
             sys.stdout.write("Value not in specified range, please try again\n")
@@ -168,7 +167,7 @@ def hexdump(data_or_stream, bytes_per_line = 16, aggregate = True):
     prev = None
     skipped = False
     for i, chunk in enumerate(read_chunk()):
-        hexd = " ".join("%02x" % (ord(ch),) for ch in chunk)
+        hexd = " ".join(f"{ord(ch):02x}" for ch in chunk)
         text = "".join(ch if 32 <= ord(ch) < 127 else "." for ch in chunk)
         if aggregate and prev == chunk:
             skipped = True
@@ -176,7 +175,7 @@ def hexdump(data_or_stream, bytes_per_line = 16, aggregate = True):
         prev = chunk
         if skipped:
             yield "*"
-        yield "%06x | %s| %s" % (i * bytes_per_line, hexd.ljust(bytes_per_line * 3, " "), text)
+        yield "{:06x} | {}| {}".format(i * bytes_per_line, hexd.ljust(bytes_per_line * 3, " "), text)
         skipped = False
 
 
@@ -194,11 +193,11 @@ def pager(rows, pagercmd = None): # pragma: no cover
     pg = pagercmd.popen(stdout = None, stderr = None)
     try:
         for row in rows:
-            line = "%s\n" % (row,)
+            line = f"{row}\n"
             try:
                 pg.stdin.write(line)
                 pg.stdin.flush()
-            except IOError:
+            except OSError:
                 break
         pg.stdin.close()
         pg.wait()

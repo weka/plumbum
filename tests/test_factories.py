@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-from __future__ import print_function
 import pytest
 from plumbum import colors
 from plumbum.colorlib.styles import ANSIStyle as Style, ColorNotFound

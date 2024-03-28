@@ -1,4 +1,3 @@
-from __future__ import division, print_function, absolute_import
 import os
 import sys
 import functools
@@ -20,14 +19,14 @@ class ShowHelpAll(SwitchError):
 class ShowVersion(SwitchError):
     pass
 
-class SwitchParseInfo(object):
+class SwitchParseInfo:
     __slots__ = ["swname", "val", "index", "__weakref__"]
     def __init__(self, swname, val, index):
         self.swname = swname
         self.val = val
         self.index = index
 
-class Subcommand(object):
+class Subcommand:
     def __init__(self, name, subapplication):
         self.name = name
         self.subapplication = subapplication
@@ -38,19 +37,19 @@ class Subcommand(object):
             try:
                 cls = getattr(mod, clsname)
             except AttributeError:
-                raise ImportError("cannot import name %s" % (clsname,))
+                raise ImportError(f"cannot import name {clsname}")
             self.subapplication = cls
         return self.subapplication
 
     def __repr__(self):
-        return "Subcommand(%r, %r)" % (self.name, self.subapplication)
+        return f"Subcommand({self.name!r}, {self.subapplication!r})"
 
 
 #===================================================================================================
 # CLI Application base class
 #===================================================================================================
 
-class Application(object):
+class Application:
     """
     The base class for CLI applications; your "entry point" class should derive from it,
     define the relevant switch functions and attributes, and the ``main()`` function.
@@ -130,7 +129,7 @@ class Application(object):
             return cls.run()
             # This return value was not a class instance, so __init__ is never called
         else:
-            return super(Application, cls).__new__(cls)
+            return super().__new__(cls)
 
     def __init__(self, executable):
         # Filter colors
@@ -172,7 +171,7 @@ class Application(object):
                     if name in self._unbound_switches:
                         continue
                     if name in self._switches_by_name and not self._switches_by_name[name].overridable:
-                        raise SwitchError("Switch %r already defined and is not overridable" % (name,))
+                        raise SwitchError(f"Switch {name!r} already defined and is not overridable")
                     self._switches_by_name[name] = swinfo
                     self._switches_by_func[swinfo.func] = swinfo
                     if swinfo.envname:
@@ -219,7 +218,7 @@ class Application(object):
 
         """
         def wrapper(subapp):
-            attrname = "_subcommand_%s" % (subapp if isinstance(subapp, str) else subapp.__name__,)
+            attrname = f"_subcommand_{subapp if isinstance(subapp, str) else subapp.__name__}"
             setattr(cls, attrname, Subcommand(name, subapp))
             return subapp
         return wrapper(subapp) if subapp else wrapper
@@ -254,11 +253,11 @@ class Application(object):
                     name = a[2:]
                 swname = "--" + name
                 if name not in self._switches_by_name:
-                    raise UnknownSwitch("Unknown switch %s" % (swname,))
+                    raise UnknownSwitch(f"Unknown switch {swname}")
                 swinfo = self._switches_by_name[name]
                 if swinfo.argtype:
                     if not argv:
-                        raise MissingArgument("Switch %s requires an argument" % (swname,))
+                        raise MissingArgument(f"Switch {swname} requires an argument")
                     a = argv.pop(0)
                     if a and a[0] == "=":
                         if len(a) >= 2:
@@ -275,21 +274,21 @@ class Application(object):
                 name = a[1]
                 swname = "-" + name
                 if name not in self._switches_by_name:
-                    raise UnknownSwitch("Unknown switch %s" % (swname,))
+                    raise UnknownSwitch(f"Unknown switch {swname}")
                 swinfo = self._switches_by_name[name]
                 if swinfo.argtype:
                     if len(a) >= 3:
                         val = a[2:]
                     else:
                         if not argv:
-                            raise MissingArgument("Switch %s requires an argument" % (swname,))
+                            raise MissingArgument(f"Switch {swname} requires an argument")
                         val = argv.pop(0)
                 elif len(a) >= 3:
                     argv.insert(0, "-" + a[2:])
 
             else:
                 if a.startswith("-"):
-                    raise UnknownSwitch("Unknown switch %s" % (a,))
+                    raise UnknownSwitch(f"Unknown switch {a}")
                 tailargs.append(a)
                 continue
 
@@ -301,9 +300,9 @@ class Application(object):
                     swfuncs[swinfo.func].val[0].append(val)
                 else:
                     if swfuncs[swinfo.func].swname == swname:
-                        raise SwitchError("Switch %r already given" % (swname,))
+                        raise SwitchError(f"Switch {swname!r} already given")
                     else:
-                        raise SwitchError("Switch %r already given (%r is equivalent)" % (
+                        raise SwitchError("Switch {!r} already given ({!r} is equivalent)".format(
                             swfuncs[swinfo.func].swname, swname))
             else:
                 if swinfo.list:
@@ -350,17 +349,17 @@ class Application(object):
                 return argtype(val)
             except (TypeError, ValueError):
                 ex = sys.exc_info()[1]  # compat
-                raise WrongArgumentType("Argument of %s expected to be %r, not %r:\n    %r" % (
+                raise WrongArgumentType("Argument of {} expected to be {!r}, not {!r}:\n    {!r}".format(
                     name, argtype, val, ex))
         else:
             return NotImplemented
 
     def _validate_args(self, swfuncs, tailargs):
-        if six.get_method_function(self.help) in swfuncs:
+        if self.help.__func__ in swfuncs:
             raise ShowHelp()
-        if six.get_method_function(self.helpall) in swfuncs:
+        if self.helpall.__func__ in swfuncs:
             raise ShowHelpAll()
-        if six.get_method_function(self.version) in swfuncs:
+        if self.version.__func__ in swfuncs:
             raise ShowVersion()
 
         requirements = {}
@@ -369,18 +368,18 @@ class Application(object):
             if swinfo.mandatory and not swinfo.func in swfuncs:
                 raise MissingMandatorySwitch("Switch %s is mandatory" %
                     ("/".join(("-" if len(n) == 1 else "--") + n for n in swinfo.names),))
-            requirements[swinfo.func] = set(self._switches_by_name[req] for req in swinfo.requires)
-            exclusions[swinfo.func] = set(self._switches_by_name[exc] for exc in swinfo.excludes)
+            requirements[swinfo.func] = {self._switches_by_name[req] for req in swinfo.requires}
+            exclusions[swinfo.func] = {self._switches_by_name[exc] for exc in swinfo.excludes}
 
         # TODO: compute topological order
 
         gotten = set(swfuncs.keys())
         for func in gotten:
-            missing = set(f.func for f in requirements[func]) - gotten
+            missing = {f.func for f in requirements[func]} - gotten
             if missing:
                 raise SwitchCombinationError("Given %s, the following are missing %r" %
                     (swfuncs[func].swname, [self._switches_by_func[f].names[0] for f in missing]))
-            invalid = set(f.func for f in exclusions[func]) & gotten
+            invalid = {f.func for f in exclusions[func]} & gotten
             if invalid:
                 raise SwitchCombinationError("Given %s, the following are invalid %r" %
                     (swfuncs[func].swname, [swfuncs[f].swname for f in invalid]))
@@ -421,7 +420,7 @@ class Application(object):
 
     def reformulate(self, exclude=None):
         ordered, tailargs = self._parsed_args
-        exclude = set(n.lstrip("-") for n in exclude) if exclude else ()
+        exclude = {n.lstrip("-") for n in exclude} if exclude else ()
         switches = []
         for sw, name, val in ordered:
             val = (sw.__get__(self, self.__class__),)
@@ -454,7 +453,7 @@ class Application(object):
 
     def reformulate(self, exclude=None):
         ordered, tailargs = self._parsed_args
-        exclude = set(n.lstrip("-") for n in exclude) if exclude else ()
+        exclude = {n.lstrip("-") for n in exclude} if exclude else ()
         switches = []
         for sw, name, val in ordered:
             if name.lstrip("-") in exclude:
@@ -498,7 +497,7 @@ class Application(object):
             inst.version()
         except SwitchError:
             ex = sys.exc_info()[1]  # compatibility with python 2.5
-            print("Error: %s" % (ex,))
+            print(f"Error: {ex}")
             print("------")
             inst.help()
             retcode = 2
@@ -567,11 +566,11 @@ class Application(object):
             if isinstance(switch, CountOf):
                 p = (range(val),)
             elif swinfo.list and not hasattr(val, "__iter__"):
-                raise SwitchError("Switch %r must be a sequence (iterable)" % (swname,))
+                raise SwitchError(f"Switch {swname!r} must be a sequence (iterable)")
             elif not swinfo.argtype:
                 # a flag
                 if val not in (True, False, None, Flag):
-                    raise SwitchError("Switch %r is a boolean flag" % (swname,))
+                    raise SwitchError(f"Switch {swname!r} is a boolean flag")
                 p = ()
             else:
                 p = (val,)
@@ -582,7 +581,7 @@ class Application(object):
         """Implement me (no need to call super)"""
         if self._subcommands:
             if args:
-                print("Unknown sub-command %r" % (args[0],))
+                print(f"Unknown sub-command {args[0]!r}")
                 print("------")
                 self.help()
                 return 1
@@ -609,7 +608,7 @@ class Application(object):
 
         if self._subcommands:
             for name, subcls in sorted(self._subcommands.items()):
-                subapp = (subcls.get())("%s %s" % (self.PROGNAME, name))
+                subapp = (subcls.get())(f"{self.PROGNAME} {name}")
                 subapp.parent = self
                 for si in subapp._switches_by_func.values():
                     if si.group == "Meta-switches":
@@ -629,9 +628,9 @@ class Application(object):
         tailargs = m.args[1:]  # skip self
         if m.defaults:
             for i, d in enumerate(reversed(m.defaults)):
-                tailargs[-i - 1] = "[%s=%r]" % (tailargs[-i - 1], d)
+                tailargs[-i - 1] = f"[{tailargs[-i - 1]}={d!r}]"
         if m.varargs:
-            tailargs.append("%s..." % (m.varargs,))
+            tailargs.append(f"{m.varargs}...")
         tailargs = " ".join(tailargs)
 
         with self.COLOR_USAGE:
@@ -662,7 +661,7 @@ class Application(object):
                             typename = si.argtype.__name__
                         else:
                             typename = str(si.argtype)
-                        argtype = " %s:%s" % (si.argname.upper(), typename)
+                        argtype = f" {si.argname.upper()}:{typename}"
                     else:
                         argtype = ""
                     prefix = swnames + argtype
@@ -741,5 +740,5 @@ class Application(object):
         """Prints the program's version and quits"""
         ver = self._get_prog_version()
         ver_name = ver if ver is not None else "(version not set)"
-        print('{0} {1}'.format(self.PROGNAME, ver_name))
+        print(f'{self.PROGNAME} {ver_name}')
 

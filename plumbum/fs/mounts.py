@@ -1,6 +1,6 @@
 import re
 
-class MountEntry(object):
+class MountEntry:
     """
     Represents a mount entry (device file, mount point and file system type)
     """
@@ -10,7 +10,7 @@ class MountEntry(object):
         self.fstype = fstype
         self.options = options.split(",")
     def __str__(self):
-        return "%s on %s type %s (%s)" % (self.dev, self.point, self.fstype, ",".join(self.options))
+        return "{} on {} type {} ({})".format(self.dev, self.point, self.fstype, ",".join(self.options))
 
 MOUNT_PATTERN = re.compile(r"(.+?)\s+on\s+(.+?)\s+type\s+(\S+)(?:\s+\((.+?)\))?")
 

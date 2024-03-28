@@ -3,7 +3,6 @@ Color-related factories. They produce Styles.
 
 """
 
-from __future__ import print_function
 import sys
 from functools import reduce
 from plumbum.colorlib.names import color_names, default_styles
@@ -12,7 +11,7 @@ from plumbum.colorlib.styles import ColorNotFound
 __all__ = ['ColorFactory', 'StyleFactory']
 
 
-class ColorFactory(object):
+class ColorFactory:
 
     """This creates color names given fg = True/False. It usually will
     be called as part of a StyleFactory."""
@@ -108,7 +107,7 @@ class ColorFactory(object):
 
     def __repr__(self):
         """Simple representation of the class by name."""
-        return "<{0}>".format(self.__class__.__name__)
+        return f"<{self.__class__.__name__}>"
 
 class StyleFactory(ColorFactory):
 
@@ -116,7 +115,7 @@ class StyleFactory(ColorFactory):
     imitates the FG ColorFactory to a large degree."""
 
     def __init__(self, style):
-        super(StyleFactory,self).__init__(True, style)
+        super().__init__(True, style)
 
         self.fg = ColorFactory(True, style)
         self.bg = ColorFactory(False, style)

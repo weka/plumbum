@@ -43,7 +43,7 @@ class PyTest(Command):
 
 
 setup(name = "plumbum",
-    version = version_string,  # @UndefinedVariable
+    version = "1.6.1",  # @UndefinedVariable
     description = "Plumbum: shell combinators library",
     author = "Tomer Filiba",
     author_email = "tomerfiliba@gmail.com",
@@ -57,7 +57,7 @@ setup(name = "plumbum",
                 'docs':PyDocs},
     # use_2to3 = False,
     # zip_safe = True,
-    long_description = open(os.path.join(HERE, "README.rst"), "r").read(),
+    long_description = open(os.path.join(HERE, "README.rst")).read(),
     classifiers = [
         "Development Status :: 5 - Production/Stable",
         "License :: OSI Approved :: MIT License",
@@ -69,6 +69,7 @@ setup(name = "plumbum",
         "Programming Language :: Python :: 3.3",
         "Programming Language :: Python :: 3.4",
         "Programming Language :: Python :: 3.5",
+        "Programming Language :: Python :: 3.11",
         "Topic :: Software Development :: Build Tools",
         "Topic :: System :: Systems Administration",
     ],

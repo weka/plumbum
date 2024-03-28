@@ -19,18 +19,9 @@ from plumbum.machines.base import BaseMachine
 from plumbum.machines.base import PopenAddons
 from plumbum.machines.env import BaseEnv
 
-if sys.version_info >= (3, 2):
-    # python 3.2 has the new-and-improved subprocess module
-    from subprocess import Popen, PIPE
-    has_new_subprocess = True
-else:
-    # otherwise, see if we have subprocess32
-    try:
-        from subprocess32 import Popen, PIPE
-        has_new_subprocess = True
-    except ImportError:
-        from subprocess import Popen, PIPE
-        has_new_subprocess = False
+# python 3.2 has the new-and-improved subprocess module
+from subprocess import Popen, PIPE
+has_new_subprocess = True
 
 class IterablePopen(Popen, PopenAddons):
     def __init__(self, *args, **kwargs):
@@ -95,9 +86,9 @@ class LocalEnv(BaseEnv):
 #===================================================================================================
 # Commands Provider
 #===================================================================================================
-class CommandsProvider(object):
+class CommandsProvider:
 
-    class Cmd(object):
+    class Cmd:
 
         def __init__(self, machine):
             self._machine = machine
@@ -128,7 +119,7 @@ class LocalCommand(ConcreteCommand):
         return local
 
     def popen(self, args = (), cwd = None, env = None, **kwargs):
-        if isinstance(args, six.string_types):
+        if isinstance(args, str):
             args = (args,)
         return self.machine._popen(self.executable, self.formulate(0, args),
             cwd = self.cwd if cwd is None else cwd, env = self.env if env is None else env,
@@ -210,7 +201,7 @@ class LocalMachine(CommandsProvider):
         parts2 = [str(self.cwd)]
         for p in parts:
             if isinstance(p, RemotePath):
-                raise TypeError("Cannot construct LocalPath from %r" % (p,))
+                raise TypeError(f"Cannot construct LocalPath from {p!r}")
             parts2.append(self.env.expanduser(str(p)))
         return LocalPath(os.path.join(*parts2))
 
@@ -240,7 +231,7 @@ class LocalMachine(CommandsProvider):
                 # search for command
                 return LocalCommand(self.which(cmd))
         else:
-            raise TypeError("cmd must not be a RemotePath: %r" % (cmd,))
+            raise TypeError(f"cmd must not be a RemotePath: {cmd!r}")
 
     def _popen(self, executable, argv, stdin = PIPE, stdout = PIPE, stderr = PIPE,
             cwd = None, env = None, new_session = False, ignore_user_stack=False, **kwargs):
@@ -405,7 +396,7 @@ class LocalMachine(CommandsProvider):
         if IS_WIN32:
             if username is None:
                 username = "Administrator"
-            self._as_user_stack.append(lambda argv: (["runas", "/savecred", "/user:%s" % (username,),
+            self._as_user_stack.append(lambda argv: (["runas", "/savecred", f"/user:{username}",
                 '"' + " ".join(str(a) for a in argv) + '"'], self.which("runas")))
         else:
             if username is None:

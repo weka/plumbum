@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-from __future__ import with_statement, print_function
 import unittest
 import os
 from plumbum import colors

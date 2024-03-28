@@ -14,16 +14,16 @@ def _setdoc(super):  # @ReservedAssignment
         return func
     return deco
 
-class ProcInfo(object):
+class ProcInfo:
     def __init__(self, pid, uid, stat, args):
         self.pid = pid
         self.uid = uid
         self.stat = stat
         self.args = args
     def __repr__(self):
-        return "ProcInfo(%r, %r, %r, %r)" % (self.pid, self.uid, self.stat, self.args)
+        return f"ProcInfo({self.pid!r}, {self.uid!r}, {self.stat!r}, {self.args!r})"
 
-class six(object):
+class six:
     """
     A light-weight version of six (which works on IronPython)
     """
@@ -73,10 +73,7 @@ class six(object):
 
 # Try/except fails because io has the wrong StringIO in Python2
 # You'll get str/unicode errors
-if six.PY3:
-    from io import StringIO
-else:
-    from StringIO import StringIO
+from io import StringIO
 
 
 @contextmanager
@@ -86,7 +83,7 @@ def captured_stdout(stdin = ""):
     """
     prevstdin = sys.stdin
     prevstdout = sys.stdout
-    sys.stdin = StringIO(six.u(stdin))
+    sys.stdin = StringIO(stdin)
     sys.stdout = StringIO()
     try:
         yield sys.stdout
@@ -94,7 +91,7 @@ def captured_stdout(stdin = ""):
         sys.stdin = prevstdin
         sys.stdout = prevstdout
 
-class StaticProperty(object):
+class StaticProperty:
     """This acts like a static property, allowing access via class or object.
     This is a non-data descriptor."""
     def __init__(self, function):

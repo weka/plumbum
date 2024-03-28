@@ -7,7 +7,6 @@ but merely provides the workhorse for finding and manipulating colors.
 With the ``Style`` class, any color can be directly called or given to a with statement.
 """
 
-from __future__ import print_function
 import sys
 import os
 import re
@@ -327,7 +326,7 @@ class Color(ABC):
 
 
 
-class Style(object):
+class Style:
     """This class allows the color changes to be called directly
     to write them to stdout, ``[]`` calls to wrap colors (or the ``.wrap`` method)
     and can be called in a with statement.
@@ -561,7 +560,7 @@ class Style(object):
         string = '; '.join(s for s in [attributes, neg_attributes, colors] if s)
         if self.isreset:
             string = 'reset'
-        return "<{0}: {1}>".format(name, string if string else 'empty')
+        return "<{}: {}>".format(name, string if string else 'empty')
 
     def __eq__(self, other):
         """Equality is true only if reset, or if attributes, fg, and bg match."""
@@ -644,7 +643,7 @@ class Style(object):
                     if filter_resets is False:
                         self.bg = self.color_class(fg=False)
                 else:
-                    raise ColorNotFound("The code {0} is not recognised".format(value))
+                    raise ColorNotFound(f"The code {value} is not recognised")
         except StopIteration:
             return
 
@@ -736,9 +735,9 @@ class HTMLStyle(Style):
         result = ''
 
         if self.bg and not self.bg.isreset:
-            result += '<span style="background-color: {0}">'.format(self.bg.hex_code)
+            result += f'<span style="background-color: {self.bg.hex_code}">'
         if self.fg and not self.fg.isreset:
-            result += '<font color="{0}">'.format(self.fg.hex_code)
+            result += f'<font color="{self.fg.hex_code}">'
         for attr in sorted(self.attributes):
             if self.attributes[attr]:
                 result += '<' + self.attribute_names[attr] + '>'

@@ -82,7 +82,7 @@ class GeetPush(cli.Application):
     tags = cli.Flag("--tags", help = "whether to push tags (default is False)")
 
     def main(self, remote, branch = "master"):
-        print("pushing to %s/%s..." % (remote, branch))
+        print(f"pushing to {remote}/{branch}...")
 
 
 if __name__ == "__main__":

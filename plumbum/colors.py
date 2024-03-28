@@ -4,7 +4,6 @@ like from `plumbum.colors` and from `plumbum.colors.bg` to work alongside
 all the standard syntax for colors.
 """
 
-from __future__ import print_function
 import sys
 import os
 import atexit

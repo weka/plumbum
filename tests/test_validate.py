@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-from __future__ import print_function, division
 import pytest
 from plumbum import cli
 from plumbum.lib import captured_stdout
@@ -7,7 +5,7 @@ from plumbum.lib import six
 
 class TestValidator:
     def test_named(self):
-        class Try(object):
+        class Try:
             @cli.positional(x=abs, y=str)
             def main(selfy, x, y):
                 pass
@@ -16,7 +14,7 @@ class TestValidator:
         assert Try.main.positional_varargs == None
 
     def test_position(self):
-        class Try(object):
+        class Try:
             @cli.positional(abs, str)
             def main(selfy, x, y):
                 pass
@@ -25,7 +23,7 @@ class TestValidator:
         assert Try.main.positional_varargs == None
 
     def test_mix(self):
-        class Try(object):
+        class Try:
             @cli.positional(abs, str, d=bool)
             def main(selfy, x, y, z, d):
                 pass
@@ -34,7 +32,7 @@ class TestValidator:
         assert Try.main.positional_varargs == None
 
     def test_var(self):
-        class Try(object):
+        class Try:
             @cli.positional(abs, str, int)
             def main(selfy, x, y, *g):
                 pass
@@ -43,7 +41,7 @@ class TestValidator:
         assert Try.main.positional_varargs == int
         
     def test_defaults(self):
-        class Try(object):
+        class Try:
             @cli.positional(abs, str)
             def main(selfy, x, y = 'hello'):
                 pass
@@ -92,8 +90,7 @@ class TestProg:
         
         
 # Unfortionatly, Py3 anotations are a syntax error in Py2, so using exec to add test for Py3
-if six.PY3:
-    exec("""
+exec("""
 class Main3Validator(cli.Application):
     def main(self, myint:int, myint2:int, *mylist:int):
         print(myint, myint2, mylist)

@@ -39,7 +39,7 @@ except ImportError:
                 0xffffffff, 0xffffffff, OVERLAPPED())
         except WinError:
             _, ex, _ = sys.exc_info()
-            raise WindowsError(*ex.args)
+            raise OSError(*ex.args)
         try:
             yield
         finally:
@@ -63,7 +63,7 @@ else:
                 fcntl.flock(fileno, fcntl.LOCK_UN)
 
 
-class AtomicFile(object):
+class AtomicFile:
     """
     Atomic file operations implemented using file-system advisory locks (``flock`` on POSIX,
     ``LockFile`` on Windows).
@@ -86,7 +86,7 @@ class AtomicFile(object):
         self.reopen()
 
     def __repr__(self):
-        return "<AtomicFile: %s>" % (self.path,) if self._fileobj else "<AtomicFile: closed>"
+        return f"<AtomicFile: {self.path}>" if self._fileobj else "<AtomicFile: closed>"
 
     def __del__(self):
         self.close()
@@ -146,7 +146,7 @@ class AtomicFile(object):
             data.append(buf)
             if len(buf) < self.CHUNK_SIZE:
                 break
-        return six.b("").join(data)
+        return b"".join(data)
 
     def read_atomic(self):
         """Atomically read the entire file"""
@@ -171,7 +171,7 @@ class AtomicFile(object):
             self._fileobj.truncate()
 
 
-class AtomicCounterFile(object):
+class AtomicCounterFile:
     """
     An atomic counter based on AtomicFile. Each time you call ``next()``, it will
     atomically read and increment the counter's value, returning its previous value
@@ -215,8 +215,8 @@ class AtomicCounterFile(object):
         """
         if value is None:
             value = self.initial
-        if not isinstance(value, six.integer_types):
-            raise TypeError("value must be an integer, not %r" % (type(value),))
+        if not isinstance(value, int):
+            raise TypeError(f"value must be an integer, not {type(value)!r}")
         self.atomicfile.write_atomic(str(value).encode("utf8"))
 
     def next(self):
@@ -243,7 +243,7 @@ class PidFileTaken(SystemExit):
         SystemExit.__init__(self, msg)
         self.pid = pid
 
-class PidFile(object):
+class PidFile:
     """
     A PID file is a file that's locked by some process from the moment it starts until it dies
     (the OS will clear the lock when the process exits). It is used to prevent two instances
@@ -279,13 +279,13 @@ class PidFile(object):
         self._ctx = self.atomicfile.locked(blocking = False)
         try:
             self._ctx.__enter__()
-        except (IOError, OSError):
+        except OSError:
             self._ctx = None
             try:
                 pid = self.atomicfile.read_shared().strip().decode("utf8")
-            except (IOError, OSError):
+            except OSError:
                 pid = "Unknown"
-            raise PidFileTaken("PID file %r taken by process %s" % (self.atomicfile.path, pid), pid)
+            raise PidFileTaken(f"PID file {self.atomicfile.path!r} taken by process {pid}", pid)
         else:
             self.atomicfile.write_atomic(str(os.getpid()).encode("utf8"))
             atexit.register(self.release)

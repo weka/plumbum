@@ -34,7 +34,7 @@ class SubcommandError(SwitchError):
 #===================================================================================================
 # The switch decorator
 #===================================================================================================
-class SwitchInfo(object):
+class SwitchInfo:
     def __init__(self, **kwargs):
         for k, v in kwargs.items():
             setattr(self, k, v)
@@ -126,7 +126,7 @@ def switch(names, argtype = None, argname = None, list = False, mandatory = Fals
 
     :returns: The decorated function (with a ``_switch_info`` attribute)
     """
-    if isinstance(names, six.string_types):
+    if isinstance(names, str):
         names = [names]
     names = [n.lstrip("-") for n in names]
     requires = [n.lstrip("-") for n in requires]
@@ -161,7 +161,7 @@ def autoswitch(*args, **kwargs):
 #===================================================================================================
 # Switch Attributes
 #===================================================================================================
-class SwitchAttr(object):
+class SwitchAttr:
     """
     A switch that stores its result in an attribute (descriptor). Usage::
 
@@ -183,7 +183,7 @@ class SwitchAttr(object):
     def __init__(self, names, argtype = str, default = None, list = False, argname = "VALUE", **kwargs):
         self.__doc__ = "Sets an attribute"  # to prevent the help message from showing SwitchAttr's docstring
         if "help" in kwargs and default and argtype is not None:
-            kwargs["help"] += "; the default is %r" % (default,)
+            kwargs["help"] += f"; the default is {default!r}"
 
         switch(names, argtype = argtype, argname = argname, list = list, **kwargs)(self)
         listtype = type([])
@@ -259,7 +259,7 @@ class CountOf(SwitchAttr):
 
 
 
-class positional(object):
+class positional:
     """
     Runs a validator on the main function for a class.    
     This should be used like this::
@@ -335,8 +335,8 @@ class Validator(six.ABC):
             for prop in getattr(cls, "__slots__", ()):
                 if prop[0] != '_':
                     slots[prop] = getattr(self, prop)
-        mystrs = ("{0} = {1}".format(name, slots[name]) for name in slots)
-        return "{0}({1})".format(self.__class__.__name__, ", ".join(mystrs))
+        mystrs = (f"{name} = {slots[name]}" for name in slots)
+        return "{}({})".format(self.__class__.__name__, ", ".join(mystrs))
     
 #===================================================================================================
 # Switch type validators
@@ -390,7 +390,7 @@ class Set(Validator):
         if self.csv is True:
             self.csv = ','
         if kwargs:
-            raise TypeError("got unexpected keyword argument(s): %r" % (kwargs.keys(),))
+            raise TypeError(f"got unexpected keyword argument(s): {kwargs.keys()!r}")
         self.values = values
     def __repr__(self):
         return "{%s}" % (", ".join(
@@ -414,7 +414,7 @@ class Set(Validator):
                 return opt(value)
             except ValueError:
                 pass
-        raise ValueError("Invalid value: %s (Expected one of %s)" % (value, self.values))
+        raise ValueError(f"Invalid value: {value} (Expected one of {self.values})")
     def choices(self, partial=""):
         # TODO: Add case sensitive/insensitive parital completion
         return set(self.values)
@@ -423,7 +423,7 @@ class Set(Validator):
 CSV = Set(str, csv=True)
 
 
-class Predicate(object):
+class Predicate:
     """A wrapper for a single-argument function with pretty printing"""
     def __init__(self, func):
         self.func = func
@@ -439,7 +439,7 @@ def ExistingDirectory(val):
     """A switch-type validator that ensures that the given argument is an existing directory"""
     p = local.path(val)
     if not p.is_dir():
-        raise ValueError("%r is not a directory" % (val,))
+        raise ValueError(f"{val!r} is not a directory")
     return p
 
 @Predicate
@@ -447,7 +447,7 @@ def ExistingFile(val):
     """A switch-type validator that ensures that the given argument is an existing file"""
     p = local.path(val)
     if not p.is_file():
-        raise ValueError("%r is not a file" % (val,))
+        raise ValueError(f"{val!r} is not a file")
     return p
 
 @Predicate
@@ -455,5 +455,5 @@ def NonexistentPath(val):
     """A switch-type validator that ensures that the given argument is a nonexistent path"""
     p = local.path(val)
     if p.exists():
-        raise ValueError("%r already exists" % (val,))
+        raise ValueError(f"{val!r} already exists")
     return p
