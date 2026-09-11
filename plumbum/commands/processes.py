@@ -62,14 +62,17 @@ def _iter_lines(proc, decode, linesize, line_timeout=None):
         # Python 3.4 implementation
         def selector():
             sel = DefaultSelector()
-            sel.register(proc.stdout, EVENT_READ, 0)
-            sel.register(proc.stderr, EVENT_READ, 1)
-            while True:
-                ready = sel.select(line_timeout)
-                if not ready and line_timeout:
-                    raise ProcessLineTimedOut("popen line timeout expired", getattr(proc, "argv", None), getattr(proc, "machine", None))
-                for key, mask in ready:
-                    yield key.data, decode(key.fileobj.readline(linesize))
+            try:
+                sel.register(proc.stdout, EVENT_READ, 0)
+                sel.register(proc.stderr, EVENT_READ, 1)
+                while True:
+                    ready = sel.select(line_timeout)
+                    if not ready and line_timeout:
+                        raise ProcessLineTimedOut("popen line timeout expired", getattr(proc, "argv", None), getattr(proc, "machine", None))
+                    for key, mask in ready:
+                        yield key.data, decode(key.fileobj.readline(linesize))
+            finally:
+                sel.close()
 
     for ret in selector():
         yield ret
